@@ -1,34 +1,98 @@
 package prdemo
 
 import (
+	"bytes"
+	"compress/zlib"
 	"encoding/binary"
 	"io"
-
-	"github.com/ghostiam/binstruct"
+	"os"
 )
 
+var (
+	demoEndian = binary.LittleEndian
+)
+
+type ReadAtSeeker interface {
+	io.ReaderAt
+	io.ReadSeeker
+}
+
 type Decoder interface {
-	Decode(DemoReader) error
+	Decode(*Message) error
 }
 
 type DemoReader interface {
-	Decode(interface{}) error
+	Next() bool
+	GetMessage() (*Message, error)
 }
 
 type demoReader struct {
-	decoder *binstruct.Decoder
+	r          ReadAtSeeker
+	pos        int64
+	size       int64
+	nextMsgLen uint16
 }
 
-func NewDemoReader(reader io.ReadSeeker) DemoReader {
+func NewDemoReader(r ReadAtSeeker) (DemoReader, error) {
+	current, err := r.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return nil, err
+	}
+
+	end, err := r.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = r.Seek(current, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
 	return &demoReader{
-		decoder: binstruct.NewDecoder(reader, binary.LittleEndian),
-	}
+		r:    r,
+		size: end,
+	}, nil
 }
 
-func (r *demoReader) Decode(v interface{}) error {
-	if d, ok := v.(Decoder); ok {
-		return d.Decode(r)
+func NewDemoReaderFromFile(file string) (DemoReader, error) {
+	reader, err := os.Open(file)
+	if err != nil {
+		return nil, err
 	}
 
-	return r.decoder.Decode(v)
+	zReader, err := zlib.NewReader(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	buf, err := io.ReadAll(zReader)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewDemoReader(bytes.NewReader(buf))
+}
+
+func (r *demoReader) Next() bool {
+	var len uint16
+
+	err := binary.Read(r.r, demoEndian, &len)
+	if err != nil {
+		return false
+	}
+
+	r.pos += 2
+
+	if r.pos+int64(len) > r.size {
+		return false
+	}
+
+	r.nextMsgLen = len
+
+	return true
+}
+
+func (r *demoReader) GetMessage() (*Message, error) {
+	return NewMessage(io.NewSectionReader(r.r, r.pos, int64(r.nextMsgLen)))
 }

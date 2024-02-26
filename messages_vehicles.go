@@ -18,13 +18,13 @@ type VehicleUpdate struct {
 	Health   *int8
 }
 
-func (v *VehicleUpdate) Decode(d DemoReader) error {
-	err := d.Decode(&v.Flags)
+func (v *VehicleUpdate) Decode(m *Message) error {
+	err := m.Decode(&v.Flags)
 	if err != nil {
 		return err
 	}
 
-	err = d.Decode(&v.ID)
+	err = m.Decode(&v.ID)
 	if err != nil {
 		return err
 	}
@@ -38,7 +38,7 @@ func (v *VehicleUpdate) Decode(d DemoReader) error {
 
 	for _, flag := range sortedKeys(flagToField) {
 		if v.Flags&uint8(flag) != 0 {
-			err = d.Decode(flagToField[flag])
+			err = m.Decode(flagToField[flag])
 			if err != nil {
 				return err
 			}

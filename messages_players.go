@@ -1,7 +1,5 @@
 package prdemo
 
-import "github.com/ghostiam/binstruct"
-
 type PlayerAdd struct {
 	ID   uint8
 	IGN  string
@@ -61,13 +59,13 @@ type PlayerUpdate struct {
 	KitName       *string
 }
 
-func (p *PlayerUpdate) Decode(d *binstruct.Decoder) error {
-	err := d.Decode(&p.Flags)
+func (p *PlayerUpdate) Decode(m *Message) error {
+	err := m.Decode(&p.Flags)
 	if err != nil {
 		return err
 	}
 
-	err = d.Decode(&p.ID)
+	err = m.Decode(&p.ID)
 	if err != nil {
 		return err
 	}
@@ -91,7 +89,7 @@ func (p *PlayerUpdate) Decode(d *binstruct.Decoder) error {
 
 	for _, flag := range sortedKeys(flagToField) {
 		if p.Flags&uint16(flag) != 0 {
-			err = d.Decode(flagToField[flag])
+			err = m.Decode(flagToField[flag])
 			if err != nil {
 				return err
 			}

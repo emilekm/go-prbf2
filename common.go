@@ -2,8 +2,15 @@ package prdemo
 
 import (
 	"cmp"
+	"io"
 	"sort"
+
+	"github.com/ghostiam/binstruct"
 )
+
+func newBinReader(r io.ReadSeeker) binstruct.Reader {
+	return binstruct.NewReader(r, demoEndian, false)
+}
 
 func sortedKeys[K cmp.Ordered, V any](m map[K]V) []K {
 	keys := make([]K, len(m))
