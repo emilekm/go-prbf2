@@ -1,7 +1,5 @@
 package prdemo
 
-import "time"
-
 type Map struct {
 	Name     string
 	Gamemode string
@@ -19,7 +17,7 @@ type ServerDetails struct {
 	Map             Map
 	BluforTeam      string
 	OpforTeam       string
-	StartTime       time.Time
+	StartTime       Time[uint32]
 	Tickets1        uint16
 	Tickets2        uint16
 	MapSize         float32

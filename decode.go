@@ -77,6 +77,10 @@ func NewDemoReaderFromFile(file string) (DemoReader, error) {
 func (r *demoReader) Next() bool {
 	var len uint16
 
+	if r.pos+3 > r.size {
+		return false
+	}
+
 	err := binary.Read(r.r, demoEndian, &len)
 	if err != nil {
 		return false
@@ -84,15 +88,18 @@ func (r *demoReader) Next() bool {
 
 	r.pos += 2
 
-	if r.pos+int64(len) > r.size {
-		return false
-	}
-
 	r.nextMsgLen = len
 
 	return true
 }
 
 func (r *demoReader) GetMessage() (*Message, error) {
-	return NewMessage(io.NewSectionReader(r.r, r.pos, int64(r.nextMsgLen)))
+	msg, err := NewMessage(io.NewSectionReader(r.r, r.pos, int64(r.nextMsgLen)))
+	if err != nil {
+		return nil, err
+	}
+
+	r.pos += int64(r.nextMsgLen)
+
+	return msg, nil
 }

@@ -1,7 +1,6 @@
 package prdemo
 
 import (
-	"encoding/binary"
 	"io"
 
 	"github.com/ghostiam/binstruct"
@@ -13,16 +12,15 @@ type Message struct {
 }
 
 func NewMessage(r io.ReadSeeker) (*Message, error) {
-	var typ MessageType
-
-	err := binary.Read(r, demoEndian, &typ)
+	br := newBinReader(r)
+	typ, err := br.ReadUint8()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Message{
-		Type: typ,
-		r:    newBinReader(r),
+		Type: MessageType(typ),
+		r:    br,
 	}, nil
 }
 
@@ -31,7 +29,5 @@ func (m *Message) Decode(v interface{}) error {
 		return d.Decode(m)
 	}
 
-	unmarshaler := unmarshal{m.r}
-
-	return unmarshaler.Unmarshal(v)
+	return m.walk(v)
 }

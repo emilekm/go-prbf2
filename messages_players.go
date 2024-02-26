@@ -19,6 +19,27 @@ type PlayerVehicle struct {
 	SeatNumber *int8
 }
 
+func (p *PlayerVehicle) Decode(m *Message) error {
+	err := m.Decode(&p.ID)
+	if err != nil {
+		return err
+	}
+
+	if p.ID >= 0 {
+		err = m.Decode(&p.SeatName)
+		if err != nil {
+			return err
+		}
+
+		err = m.Decode(&p.SeatNumber)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type PlayerUpdateFlag uint16
 
 const (

@@ -4,9 +4,27 @@ import (
 	"cmp"
 	"io"
 	"sort"
+	"time"
 
 	"github.com/ghostiam/binstruct"
+	"golang.org/x/exp/constraints"
 )
+
+type Time[T constraints.Unsigned] struct {
+	time.Time
+}
+
+func (t *Time[T]) Decode(m *Message) error {
+	var ts T
+	err := m.Decode(&ts)
+	if err != nil {
+		return err
+	}
+
+	t = &Time[T]{time.Unix(int64(ts), 0)}
+
+	return nil
+}
 
 func newBinReader(r io.ReadSeeker) binstruct.Reader {
 	return binstruct.NewReader(r, demoEndian, false)
