@@ -17,10 +17,6 @@ type ReadAtSeeker interface {
 	io.ReadSeeker
 }
 
-type Decoder interface {
-	Decode(*Message) error
-}
-
 type DemoReader interface {
 	Next() bool
 	GetMessage() (*Message, error)
@@ -77,6 +73,8 @@ func NewDemoReaderFromFile(file string) (DemoReader, error) {
 func (r *demoReader) Next() bool {
 	var len uint16
 
+	r.pos += int64(r.nextMsgLen)
+
 	if r.pos+3 > r.size {
 		return false
 	}
@@ -99,7 +97,10 @@ func (r *demoReader) GetMessage() (*Message, error) {
 		return nil, err
 	}
 
-	r.pos += int64(r.nextMsgLen)
+	_, err = r.r.Seek(int64(r.nextMsgLen), io.SeekCurrent)
+	if err != nil {
+		return nil, err
+	}
 
 	return msg, nil
 }

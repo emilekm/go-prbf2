@@ -17,7 +17,7 @@ type ServerDetails struct {
 	Map             Map
 	BluforTeam      string
 	OpforTeam       string
-	StartTime       Time[uint32]
+	StartTime       uint32
 	Tickets1        uint16
 	Tickets2        uint16
 	MapSize         float32

@@ -2,6 +2,7 @@ package prdemo
 
 import (
 	"errors"
+	"io"
 	"reflect"
 	"strings"
 )
@@ -12,6 +13,16 @@ func (m *Message) walk(obj interface{}) error {
 
 func (m *Message) walkRecursive(val reflect.Value) error {
 	r := m.r
+
+	if val.Type().Implements(reflect.TypeOf((*Decoder)(nil)).Elem()) {
+		d := val.Interface().(Decoder)
+		err := d.Decode(m)
+		if err != nil {
+			return err
+		}
+		val.Set(reflect.ValueOf(d))
+		return nil
+	}
 
 	switch val.Kind() {
 	case reflect.Ptr:
@@ -43,16 +54,9 @@ func (m *Message) walkRecursive(val reflect.Value) error {
 		}
 	case reflect.Struct:
 		for i := 0; i < val.NumField(); i += 1 {
-			// check if field has Decode method
-			if d, ok := val.Interface().(Decoder); ok {
-				println("has Decode method")
-				err := d.Decode(m)
-				if err != nil {
-					return err
-				}
-				val.Set(reflect.ValueOf(d))
-			}
-			err := m.walkRecursive(val.Field(i))
+			fieldValue := val.Field(i)
+
+			err := m.walkRecursive(fieldValue)
 			if err != nil {
 				return err
 			}
@@ -172,6 +176,9 @@ func (m *Message) walkRecursive(val reflect.Value) error {
 			tmpV := reflect.New(val.Type().Elem()).Elem()
 			err := m.walkRecursive(tmpV)
 			if err != nil {
+				if err == io.EOF || err == io.ErrUnexpectedEOF {
+					return nil
+				}
 				return err
 			}
 			if val.CanSet() {

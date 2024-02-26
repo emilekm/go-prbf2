@@ -6,6 +6,10 @@ import (
 	"github.com/ghostiam/binstruct"
 )
 
+type Decoder interface {
+	Decode(*Message) error
+}
+
 type Message struct {
 	Type MessageType
 	r    binstruct.Reader
@@ -13,6 +17,7 @@ type Message struct {
 
 func NewMessage(r io.ReadSeeker) (*Message, error) {
 	br := newBinReader(r)
+
 	typ, err := br.ReadUint8()
 	if err != nil {
 		return nil, err
