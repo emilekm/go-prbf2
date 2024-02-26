@@ -1,5 +1,7 @@
 package prdemo
 
+//go:generate go run golang.org/x/tools/cmd/stringer -type=MessageType -output=types_strings.go
+
 type MessageType uint8
 
 const (
