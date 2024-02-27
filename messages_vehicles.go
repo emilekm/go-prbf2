@@ -12,10 +12,10 @@ const (
 type VehicleUpdate struct {
 	Flags    uint8
 	ID       int16
-	Team     *int8
-	Position *Position
-	Rotation *int16
-	Health   *int8
+	Team     int8
+	Position Position
+	Rotation int16
+	Health   int8
 }
 
 func (v *VehicleUpdate) Decode(m *Message) error {
@@ -30,10 +30,10 @@ func (v *VehicleUpdate) Decode(m *Message) error {
 	}
 
 	flagToField := map[VehicleUpdateFlag]interface{}{
-		VehicleUpdateFlagTeam:     v.Team,
-		VehicleUpdateFlagPosition: v.Position,
-		VehicleUpdateFlagRotation: v.Rotation,
-		VehicleUpdateFlagHealth:   v.Health,
+		VehicleUpdateFlagTeam:     &v.Team,
+		VehicleUpdateFlagPosition: &v.Position,
+		VehicleUpdateFlagRotation: &v.Rotation,
+		VehicleUpdateFlagHealth:   &v.Health,
 	}
 
 	for _, flag := range sortedKeys(flagToField) {

@@ -64,20 +64,20 @@ const (
 type PlayerUpdate struct {
 	Flags         uint16
 	ID            uint8
-	Team          *int8
-	Squad         *uint8
-	Vehicle       *PlayerVehicle
-	Health        *int8
-	Score         *int16
-	TeamworkScore *int16
-	Kills         *int16
-	Deaths        *int16
-	Ping          *int16
-	IsAlive       *bool
-	IsJoining     *bool
-	Position      *Position
-	Rotation      *int16
-	KitName       *string
+	Team          int8
+	Squad         uint8
+	Vehicle       PlayerVehicle
+	Health        int8
+	Score         int16
+	TeamworkScore int16
+	Kills         int16
+	Deaths        int16
+	Ping          int16
+	IsAlive       bool
+	IsJoining     bool
+	Position      Position
+	Rotation      int16
+	KitName       string
 }
 
 func (p *PlayerUpdate) Decode(m *Message) error {
@@ -92,20 +92,20 @@ func (p *PlayerUpdate) Decode(m *Message) error {
 	}
 
 	flagToField := map[PlayerUpdateFlag]interface{}{
-		PlayerUpdateFlagTeam:          p.Team,
-		PlayerUpdateFlagSquad:         p.Squad,
-		PlayerUpdateFlagVehicle:       p.Vehicle,
-		PlayerUpdateFlagHealth:        p.Health,
-		PlayerUpdateFlagScore:         p.Score,
-		PlayerUpdateFlagTeamworkScore: p.TeamworkScore,
-		PlayerUpdateFlagKills:         p.Kills,
-		PlayerUpdateFlagDeaths:        p.Deaths,
-		PlayerUpdateFlagPing:          p.Ping,
-		PlayerUpdateFlagIsAlive:       p.IsAlive,
-		PlayerUpdateFlagIsJoining:     p.IsJoining,
-		PlayerUpdateFlagPosition:      p.Position,
-		PlayerUpdateFlagRotation:      p.Rotation,
-		PlayerUpdateFlagKitName:       p.KitName,
+		PlayerUpdateFlagTeam:          &p.Team,
+		PlayerUpdateFlagSquad:         &p.Squad,
+		PlayerUpdateFlagVehicle:       &p.Vehicle,
+		PlayerUpdateFlagHealth:        &p.Health,
+		PlayerUpdateFlagScore:         &p.Score,
+		PlayerUpdateFlagTeamworkScore: &p.TeamworkScore,
+		PlayerUpdateFlagKills:         &p.Kills,
+		PlayerUpdateFlagDeaths:        &p.Deaths,
+		PlayerUpdateFlagPing:          &p.Ping,
+		PlayerUpdateFlagIsAlive:       &p.IsAlive,
+		PlayerUpdateFlagIsJoining:     &p.IsJoining,
+		PlayerUpdateFlagPosition:      &p.Position,
+		PlayerUpdateFlagRotation:      &p.Rotation,
+		PlayerUpdateFlagKitName:       &p.KitName,
 	}
 
 	for _, flag := range sortedKeys(flagToField) {
