@@ -15,8 +15,8 @@ type PlayerRemove struct {
 
 type PlayerVehicle struct {
 	ID         int16
-	SeatName   *string
-	SeatNumber *int8
+	SeatName   string
+	SeatNumber int8
 }
 
 func (p *PlayerVehicle) Decode(m *Message) error {
