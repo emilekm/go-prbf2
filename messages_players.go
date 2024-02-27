@@ -19,105 +19,63 @@ type PlayerVehicle struct {
 	SeatNumber *int8
 }
 
-func (p *PlayerVehicle) Decode(m *Message) error {
+func NewPlayerVehicle() *PlayerVehicle {
+	return &PlayerVehicle{
+		SeatName:   new(string),
+		SeatNumber: new(int8),
+	}
+}
+
+func (p PlayerVehicle) Read(m *Message) (any, error) {
 	err := m.Decode(&p.ID)
 	if err != nil {
-		return err
+		return p, err
 	}
 
 	if p.ID >= 0 {
-		err = m.Decode(&p.SeatName)
+		p.SeatName = new(string)
+		err = m.Decode(p.SeatName)
 		if err != nil {
-			return err
+			return p, err
 		}
 
-		err = m.Decode(&p.SeatNumber)
+		p.SeatNumber = new(int8)
+		err = m.Decode(p.SeatNumber)
 		if err != nil {
-			return err
+			return p, err
 		}
 	}
 
-	return nil
+	return p, nil
 }
 
-type PlayerUpdateFlag uint16
+func (p *PlayerVehicle) Decode(m *Message) error {
+	nP, err := p.Read(m)
+	if err != nil {
+		return err
+	}
 
-const (
-	PlayerUpdateFlagTeam PlayerUpdateFlag = 1 << iota
-	PlayerUpdateFlagSquad
-	PlayerUpdateFlagVehicle
-	PlayerUpdateFlagHealth
-	PlayerUpdateFlagScore
-	PlayerUpdateFlagTeamworkScore
-	PlayerUpdateFlagKills
-	// Jump 1 bit, since it's unused
-	PlayerUpdateFlagDeaths = 1 << iota << 1
-	PlayerUpdateFlagPing
-	// Jump 1 bit, since it's unused
-	PlayerUpdateFlagIsAlive = 1 << iota << 2
-	PlayerUpdateFlagIsJoining
-	PlayerUpdateFlagPosition
-	PlayerUpdateFlagRotation
-	PlayerUpdateFlagKitName
-)
+	*(p) = nP.(PlayerVehicle)
+	return nil
+}
 
 type PlayerUpdate struct {
-	Flags         uint16
+	Flags         uint16 `bin:"flags"`
 	ID            uint8
-	Team          *int8
-	Squad         *uint8
-	Vehicle       *PlayerVehicle
-	Health        *int8
-	Score         *int16
-	TeamworkScore *int16
-	Kills         *int16
-	Deaths        *int16
-	Ping          *int16
-	IsAlive       *bool
-	IsJoining     *bool
-	Position      *Position
-	Rotation      *int16
-	KitName       *string
-}
-
-func (p *PlayerUpdate) Decode(m *Message) error {
-	err := m.Decode(&p.Flags)
-	if err != nil {
-		return err
-	}
-
-	err = m.Decode(&p.ID)
-	if err != nil {
-		return err
-	}
-
-	flagToField := map[PlayerUpdateFlag]interface{}{
-		PlayerUpdateFlagTeam:          p.Team,
-		PlayerUpdateFlagSquad:         p.Squad,
-		PlayerUpdateFlagVehicle:       p.Vehicle,
-		PlayerUpdateFlagHealth:        p.Health,
-		PlayerUpdateFlagScore:         p.Score,
-		PlayerUpdateFlagTeamworkScore: p.TeamworkScore,
-		PlayerUpdateFlagKills:         p.Kills,
-		PlayerUpdateFlagDeaths:        p.Deaths,
-		PlayerUpdateFlagPing:          p.Ping,
-		PlayerUpdateFlagIsAlive:       p.IsAlive,
-		PlayerUpdateFlagIsJoining:     p.IsJoining,
-		PlayerUpdateFlagPosition:      p.Position,
-		PlayerUpdateFlagRotation:      p.Rotation,
-		PlayerUpdateFlagKitName:       p.KitName,
-	}
-
-	for _, flag := range sortedKeys(flagToField) {
-		if p.Flags&uint16(flag) != 0 {
-			err = m.Decode(flagToField[flag])
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	Team          *int8          `bin:"flag=1"`
+	Squad         *uint8         `bin:"flag=2"`
+	Vehicle       *PlayerVehicle `bin:"flag=4"`
+	Health        *int8          `bin:"flag=8"`
+	Score         *int16         `bin:"flag=16"`
+	TeamworkScore *int16         `bin:"flag=32"`
+	Kills         *int16         `bin:"flag=64"`
+	Deaths        *int16         `bin:"flag=256"`
+	Ping          *int16         `bin:"flag=512"`
+	IsAlive       *bool          `bin:"flag=2048"`
+	IsJoining     *bool          `bin:"flag=4096"`
+	Position      *Position      `bin:"flag=8192"`
+	Rotation      *int16         `bin:"flag=16384"`
+	KitName       *string        `bin:"flag=32768"`
 }
 
 type PlayersUpdate []PlayerUpdate

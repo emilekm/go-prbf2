@@ -1,51 +1,12 @@
 package prdemo
 
-type VehicleUpdateFlag uint8
-
-const (
-	VehicleUpdateFlagTeam VehicleUpdateFlag = 1 << iota
-	VehicleUpdateFlagPosition
-	VehicleUpdateFlagRotation
-	VehicleUpdateFlagHealth
-)
-
 type VehicleUpdate struct {
-	Flags    uint8
+	Flags    uint8 `bin:"flags"`
 	ID       int16
-	Team     *int8
-	Position *Position
-	Rotation *int16
-	Health   *int8
-}
-
-func (v *VehicleUpdate) Decode(m *Message) error {
-	err := m.Decode(&v.Flags)
-	if err != nil {
-		return err
-	}
-
-	err = m.Decode(&v.ID)
-	if err != nil {
-		return err
-	}
-
-	flagToField := map[VehicleUpdateFlag]interface{}{
-		VehicleUpdateFlagTeam:     v.Team,
-		VehicleUpdateFlagPosition: v.Position,
-		VehicleUpdateFlagRotation: v.Rotation,
-		VehicleUpdateFlagHealth:   v.Health,
-	}
-
-	for _, flag := range sortedKeys(flagToField) {
-		if v.Flags&uint8(flag) != 0 {
-			err = m.Decode(flagToField[flag])
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	Team     *int8     `bin:"flag=1"`
+	Position *Position `bin:"flag=2"`
+	Rotation *int16    `bin:"flag=4"`
+	Health   *int16    `bin:"flag=8"`
 }
 
 type VehiclesUpdate []VehicleUpdate

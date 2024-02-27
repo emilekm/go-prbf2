@@ -6,7 +6,11 @@ import (
 	"github.com/ghostiam/binstruct"
 )
 
-type Decoder interface {
+type Read interface {
+	Read(*Message) (any, error)
+}
+
+type DecodeInto interface {
 	Decode(*Message) error
 }
 
@@ -28,9 +32,12 @@ func NewMessage(r io.ReadSeeker) (*Message, error) {
 		r:    br,
 	}, nil
 }
+func (m *Message) R() binstruct.Reader {
+	return m.r
+}
 
 func (m *Message) Decode(v interface{}) error {
-	if d, ok := v.(Decoder); ok {
+	if d, ok := v.(DecodeInto); ok {
 		return d.Decode(m)
 	}
 
