@@ -63,6 +63,11 @@ type DoD struct {
 
 type DoDs []DoD
 
+type FlagUpdate struct {
+	CpID       int16
+	OwningTeam uint8
+}
+
 type Flag struct {
 	CpID       int16
 	OwningTeam uint8
