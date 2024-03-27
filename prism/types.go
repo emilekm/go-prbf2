@@ -5,6 +5,7 @@ var (
 	SeparatorSubject = []byte{0x02}
 	SeparatorField   = []byte{0x03}
 	SeparatorEnd     = []byte{0x04, 0x00}
+	SeparatorBuffer  = []byte{0x0A}
 )
 
 type Subject string

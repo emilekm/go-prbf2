@@ -30,6 +30,13 @@ func (m *Message) Encode() []byte {
 	)
 }
 
+func (m *Message) AddField(field []byte) {
+	if len(m.Content) > 0 {
+		m.Content = append(m.Content, SeparatorField...)
+	}
+	m.Content = append(m.Content, field...)
+}
+
 func (m *Message) Fields() [][]byte {
 	return bytes.Split(m.Content, SeparatorField)
 }

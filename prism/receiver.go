@@ -5,17 +5,18 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 )
 
 type Receiver struct {
 	reader io.Reader
-	msgCh  chan Message
+	broker *Broker[Message]
 }
 
 func NewReceiver(r io.Reader) *Receiver {
 	receiver := &Receiver{
 		reader: r,
-		msgCh:  make(chan Message),
+		broker: NewBroker[Message](),
 	}
 
 	receiver.Start()
@@ -23,12 +24,12 @@ func NewReceiver(r io.Reader) *Receiver {
 	return receiver
 }
 
-func (r *Receiver) C() <-chan Message {
-	return r.msgCh
+func (r *Receiver) Listen() *Subscriber[Message] {
+	return r.broker.Subscribe()
 }
 
 func (r *Receiver) Start() {
-	scanner := bufio.NewScanner(r.reader)
+	scanner := bufio.NewScanner(io.TeeReader(r.reader, os.Stdout))
 	scanner.Split(splitMessages)
 
 	go func() {
@@ -39,10 +40,7 @@ func (r *Receiver) Start() {
 				continue
 			}
 
-			select {
-			case r.msgCh <- *msg:
-			default:
-			}
+			r.broker.Publish(*msg)
 		}
 	}()
 }

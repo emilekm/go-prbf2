@@ -28,16 +28,16 @@ func Marshal(m any) Message {
 		switch fieldType.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			fieldValueInt64 := field.Int()
-			msg.Content = append(msg.Content, StringToBytes(strconv.Itoa(int(fieldValueInt64)))...)
+			msg.AddField(StringToBytes(strconv.Itoa(int(fieldValueInt64))))
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			fieldValueUint64 := field.Uint()
-			msg.Content = append(msg.Content, StringToBytes(strconv.Itoa(int(fieldValueUint64)))...)
+			msg.AddField(StringToBytes(strconv.Itoa(int(fieldValueUint64))))
 		case reflect.String:
 			fieldValueString := field.String()
-			msg.Content = append(msg.Content, StringToBytes(fieldValueString)...)
+			msg.AddField([]byte(fieldValueString))
 		case reflect.Slice:
 			if fieldType.Elem().Kind() == reflect.Uint8 {
-				msg.Content = append(msg.Content, field.Bytes()...)
+				msg.AddField(field.Bytes())
 			}
 		}
 	}

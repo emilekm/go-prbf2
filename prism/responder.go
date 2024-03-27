@@ -9,24 +9,28 @@ import (
 )
 
 type Responder struct {
-	receiver *Receiver
-	sender   *Transmitter
-	mutex    sync.Mutex
+	receiver     *Receiver
+	chatReceiver *BufferReceiver[ChatMessage]
+	sender       *Transmitter
+	mutex        sync.Mutex
 }
 
-func NewResponder(receiver *Receiver, sender *Transmitter) *Responder {
+func NewResponder(receiver *Receiver, chatReceiver *BufferReceiver[ChatMessage], sender *Transmitter) *Responder {
 	return &Responder{
-		receiver: receiver,
-		sender:   sender,
+		receiver:     receiver,
+		chatReceiver: chatReceiver,
+		sender:       sender,
 	}
 }
 
 type SendOpts struct {
 	ResponseSubjects []Subject
+	ChatMessageType  *ChatMessageType
 }
 
 type Response struct {
-	Messages []Message
+	Messages    []Message
+	ChatMessage *ChatMessage
 }
 
 func (r *Responder) Send(msg Message, opts *SendOpts) (*Response, error) {
@@ -40,23 +44,27 @@ func (r *Responder) Send(msg Message, opts *SendOpts) (*Response, error) {
 	subjects := append([]Subject{}, opts.ResponseSubjects...)
 
 	var resp Response
-	var msgErr error
+	var subjectErr error
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(2)
+
 	go func() {
 		defer wg.Done()
-
+		timer := time.NewTimer(5 * time.Second)
 		for {
 			if len(subjects) == 0 {
 				return
 			}
 
+			sub := r.receiver.Listen()
+
 			select {
-			case <-time.After(5 * time.Second):
-				msgErr = errors.New("timeout")
+			case <-timer.C:
+				subjectErr = errors.New("timeout")
 				return
-			case m := <-r.receiver.C():
+			case m := <-sub.Channel:
+				println(m.Subject)
 				if i := slices.Index(subjects, m.Subject); i != -1 {
 					resp.Messages = append(resp.Messages, m)
 					subjects = append(subjects[:i], subjects[i+1:]...)
@@ -65,15 +73,43 @@ func (r *Responder) Send(msg Message, opts *SendOpts) (*Response, error) {
 					var msgErr2 Error
 					err := UnmarshalInto(msg, &msgErr2)
 					if err != nil {
-						msgErr = fmt.Errorf("unmarshal error: %w", err)
+						subjectErr = fmt.Errorf("unmarshal error: %w", err)
 						return
 					}
-					msgErr = msgErr2
+					subjectErr = msgErr2
 					return
 				}
 			}
 		}
 	}()
+
+	var chatErr error
+
+	go func() {
+		defer wg.Done()
+
+		timer := time.NewTimer(2 * time.Second)
+		sub := r.chatReceiver.Listen()
+
+		for {
+			if opts.ChatMessageType == nil {
+				return
+			}
+
+			select {
+			case <-timer.C:
+				chatErr = errors.New("timeout")
+				return
+			case m := <-sub.Channel:
+				if m.Type == *opts.ChatMessageType {
+					resp.ChatMessage = &m
+					return
+				}
+			}
+		}
+	}()
+
+	time.Sleep(300 * time.Millisecond)
 
 	err := r.sender.SendRaw(msg.Encode())
 	if err != nil {
@@ -82,8 +118,12 @@ func (r *Responder) Send(msg Message, opts *SendOpts) (*Response, error) {
 
 	wg.Wait()
 
-	if msgErr != nil {
-		return nil, fmt.Errorf("send response: %w", msgErr)
+	if subjectErr != nil {
+		return nil, fmt.Errorf("send subject err: %w", subjectErr)
+	}
+
+	if chatErr != nil {
+		return nil, fmt.Errorf("send chat err: %w", chatErr)
 	}
 
 	return &resp, nil

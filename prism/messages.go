@@ -18,3 +18,7 @@ type Login1Response struct {
 type Login2Request struct {
 	ChallengeDigest string
 }
+
+type RACommand struct {
+	Command string
+}

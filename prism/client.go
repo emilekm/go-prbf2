@@ -11,10 +11,14 @@ const (
 )
 
 type Client struct {
-	config    ClientConfig
-	conn      net.Conn
-	receiver  *Receiver
-	sender    *Transmitter
+	config ClientConfig
+	conn   net.Conn
+
+	receiver      *Receiver
+	chatReceiver  *BufferReceiver[ChatMessage]
+	killsReceiver *BufferReceiver[KillMessage]
+	sender        *Transmitter
+
 	Responder *Responder
 }
 
@@ -41,9 +45,11 @@ func (c *Client) Connect() error {
 	c.conn.SetDeadline(time.Time{})
 
 	c.receiver = NewReceiver(c.conn)
+	c.chatReceiver = NewBufferReceiver[ChatMessage](c.receiver)
+	c.killsReceiver = NewBufferReceiver[KillMessage](c.receiver)
 	c.sender = NewTransmitter(c.conn)
 
-	c.Responder = NewResponder(c.receiver, c.sender)
+	c.Responder = NewResponder(c.receiver, c.chatReceiver, c.sender)
 
 	return auth(c.Responder, c.config)
 }

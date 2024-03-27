@@ -1,6 +1,8 @@
 package prism
 
-import "io"
+import (
+	"io"
+)
 
 type Transmitter struct {
 	writer io.Writer
