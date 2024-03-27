@@ -9,12 +9,12 @@ import (
 )
 
 type Responder struct {
-	receiver *MessageReceiver
-	sender   *MessageSender
+	receiver *Receiver
+	sender   *Transmitter
 	mutex    sync.Mutex
 }
 
-func NewResponder(receiver *MessageReceiver, sender *MessageSender) *Responder {
+func NewResponder(receiver *Receiver, sender *Transmitter) *Responder {
 	return &Responder{
 		receiver: receiver,
 		sender:   sender,

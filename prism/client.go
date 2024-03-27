@@ -13,8 +13,8 @@ const (
 type Client struct {
 	config    ClientConfig
 	conn      net.Conn
-	receiver  *MessageReceiver
-	sender    *MessageSender
+	receiver  *Receiver
+	sender    *Transmitter
 	Responder *Responder
 }
 
@@ -40,8 +40,8 @@ func (c *Client) Connect() error {
 	c.conn = conn
 	c.conn.SetDeadline(time.Time{})
 
-	c.receiver = NewMessageReceiver(c.conn)
-	c.sender = NewMessageSender(c.conn)
+	c.receiver = NewReceiver(c.conn)
+	c.sender = NewTransmitter(c.conn)
 
 	c.Responder = NewResponder(c.receiver, c.sender)
 

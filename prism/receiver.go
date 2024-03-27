@@ -7,13 +7,13 @@ import (
 	"io"
 )
 
-type MessageReceiver struct {
+type Receiver struct {
 	reader io.Reader
 	msgCh  chan Message
 }
 
-func NewMessageReceiver(r io.Reader) *MessageReceiver {
-	receiver := &MessageReceiver{
+func NewReceiver(r io.Reader) *Receiver {
+	receiver := &Receiver{
 		reader: r,
 		msgCh:  make(chan Message),
 	}
@@ -23,12 +23,12 @@ func NewMessageReceiver(r io.Reader) *MessageReceiver {
 	return receiver
 }
 
-func (mr *MessageReceiver) C() <-chan Message {
-	return mr.msgCh
+func (r *Receiver) C() <-chan Message {
+	return r.msgCh
 }
 
-func (mr *MessageReceiver) Start() {
-	scanner := bufio.NewScanner(mr.reader)
+func (r *Receiver) Start() {
+	scanner := bufio.NewScanner(r.reader)
 	scanner.Split(splitMessages)
 
 	go func() {
@@ -40,7 +40,7 @@ func (mr *MessageReceiver) Start() {
 			}
 
 			select {
-			case mr.msgCh <- *msg:
+			case r.msgCh <- *msg:
 			default:
 			}
 		}
