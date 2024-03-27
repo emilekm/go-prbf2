@@ -7,13 +7,13 @@ import (
 
 type Message struct {
 	Subject Subject
-	Fields  [][]byte
+	Content []byte
 }
 
 func NewMessage(subject Subject, fields ...[]byte) Message {
 	return Message{
 		Subject: subject,
-		Fields:  fields,
+		Content: bytes.Join(fields, SeparatorField),
 	}
 }
 
@@ -23,11 +23,15 @@ func (m *Message) Encode() []byte {
 			SeparatorStart,
 			[]byte(m.Subject),
 			SeparatorSubject,
-			bytes.Join(m.Fields, SeparatorField),
+			m.Content,
 			SeparatorEnd,
 		},
 		[]byte{},
 	)
+}
+
+func (m *Message) Fields() [][]byte {
+	return bytes.Split(m.Content, SeparatorField)
 }
 
 func DecodeMessage(data []byte) (*Message, error) {
@@ -41,13 +45,13 @@ func DecodeMessage(data []byte) (*Message, error) {
 		return nil, errors.New("missing start separator")
 	}
 
-	subject, fields, found := bytes.Cut(data, SeparatorSubject)
+	subject, content, found := bytes.Cut(data, SeparatorSubject)
 	if !found {
 		return nil, errors.New("missing subject separator")
 	}
 
 	return &Message{
 		Subject: Subject(subject),
-		Fields:  bytes.Split(fields, SeparatorField),
+		Content: content,
 	}, nil
 }

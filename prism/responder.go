@@ -62,7 +62,13 @@ func (r *Responder) Send(msg Message, opts *SendOpts) (*Response, error) {
 					subjects = append(subjects[:i], subjects[i+1:]...)
 				}
 				if slices.Contains(errorSubjects, m.Subject) {
-					msgErr = NewErrorFromMessage(msg)
+					var msgErr2 Error
+					err := UnmarshalInto(msg, &msgErr2)
+					if err != nil {
+						msgErr = fmt.Errorf("unmarshal error: %w", err)
+						return
+					}
+					msgErr = msgErr2
 					return
 				}
 			}

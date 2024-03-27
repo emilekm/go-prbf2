@@ -11,22 +11,24 @@ import (
 func auth(r *Responder, config ClientConfig) error {
 	cck := cck(32)
 
-	login1Msg := NewMessage(
-		SubjectLogin1,
-		[]byte("1"),
-		[]byte(config.User),
-		cck,
-	)
+	login1Req := Login1Request{
+		ServerVersion:      ServerVersion1,
+		Username:           config.User,
+		ClientChallengeKey: cck,
+	}
 
-	resp, err := r.Send(login1Msg, &SendOpts{
+	resp, err := r.Send(Marshal(login1Req), &SendOpts{
 		ResponseSubjects: []Subject{SubjectLogin1},
 	})
 	if err != nil {
 		return fmt.Errorf("login1: %w", err)
 	}
 
-	passHash := resp.Messages[0].Fields[0]
-	serverChallenge := resp.Messages[0].Fields[1]
+	var login1Resp Login1Response
+	err = UnmarshalInto(resp.Messages[0], &login1Resp)
+	if err != nil {
+		return fmt.Errorf("login1: %w", err)
+	}
 
 	passwordHash := sha1.New()
 	saltedPassword := sha1.New()
@@ -37,7 +39,7 @@ func auth(r *Responder, config ClientConfig) error {
 		return err
 	}
 
-	salted := append(passHash, SeparatorStart...)
+	salted := append(login1Resp.Hash, SeparatorStart...)
 	salted = append(salted, hex.EncodeToString(passwordHash.Sum(nil))...)
 
 	_, err = saltedPassword.Write(salted)
@@ -50,7 +52,7 @@ func auth(r *Responder, config ClientConfig) error {
 			[][]byte{
 				[]byte(config.User),
 				cck,
-				serverChallenge,
+				login1Resp.ServerChallenge,
 				[]byte(hex.EncodeToString(saltedPassword.Sum(nil))),
 			},
 			SeparatorField,
@@ -60,12 +62,11 @@ func auth(r *Responder, config ClientConfig) error {
 		return err
 	}
 
-	login2Msg := Message{
-		Subject: SubjectLogin2,
-		Fields:  [][]byte{[]byte(hex.EncodeToString(challengeDigest.Sum(nil)))},
+	login2Req := Login2Request{
+		ChallengeDigest: hex.EncodeToString(challengeDigest.Sum(nil)),
 	}
 
-	_, err = r.Send(login2Msg, &SendOpts{
+	_, err = r.Send(Marshal(login2Req), &SendOpts{
 		ResponseSubjects: []Subject{SubjectConnected},
 	})
 	if err != nil {

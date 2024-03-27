@@ -38,7 +38,7 @@ func TestMessage(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, test.subject, decoded.Subject)
-			require.Equal(t, test.fields, decoded.Fields)
+			require.Equal(t, test.fields, decoded.Fields())
 		})
 	}
 }
