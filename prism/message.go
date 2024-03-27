@@ -10,6 +10,13 @@ type Message struct {
 	Fields  [][]byte
 }
 
+func NewMessage(subject Subject, fields ...[]byte) Message {
+	return Message{
+		Subject: subject,
+		Fields:  fields,
+	}
+}
+
 func (m *Message) Encode() []byte {
 	return bytes.Join(
 		[][]byte{
@@ -24,7 +31,12 @@ func (m *Message) Encode() []byte {
 }
 
 func DecodeMessage(data []byte) (*Message, error) {
-	data, found := bytes.CutPrefix(data, SeparatorStart)
+	// Make sure we arent reading data after the end separator
+	// or with it
+	data, _, _ = bytes.Cut(data, SeparatorEnd)
+	// Skipping data before the start separator
+	// It might be empty spaces
+	_, data, found := bytes.Cut(data, SeparatorStart)
 	if !found {
 		return nil, errors.New("missing start separator")
 	}
