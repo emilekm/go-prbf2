@@ -1,4 +1,4 @@
-module github.com/emilekm/go-prdemo
+module github.com/emilekm/go-prbf2
 
 go 1.22
 
