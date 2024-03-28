@@ -13,7 +13,7 @@ func auth(r *Responder, config ClientConfig) error {
 
 	login1Req := Login1Request{
 		ServerVersion:      ServerVersion1,
-		Username:           config.User,
+		Username:           config.Username,
 		ClientChallengeKey: cck,
 	}
 
@@ -34,7 +34,7 @@ func auth(r *Responder, config ClientConfig) error {
 	saltedPassword := sha1.New()
 	challengeDigest := sha1.New()
 
-	_, err = passwordHash.Write([]byte(config.Pass))
+	_, err = passwordHash.Write([]byte(config.Password))
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func auth(r *Responder, config ClientConfig) error {
 	_, err = challengeDigest.Write(
 		bytes.Join(
 			[][]byte{
-				[]byte(config.User),
+				[]byte(config.Username),
 				cck,
 				login1Resp.ServerChallenge,
 				[]byte(hex.EncodeToString(saltedPassword.Sum(nil))),

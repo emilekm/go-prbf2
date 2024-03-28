@@ -1,50 +1,29 @@
 package prism
 
 import (
-	"context"
-	"sync"
+	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	user = "superuser"
-	pass = "VtVAMW5J"
-)
-
 func TestClient(t *testing.T) {
-	c := NewClient("10.232.88.130", "4712")
+	host := os.Getenv("PRISM_HOST")
+	port := os.Getenv("PRISM_PORT")
+	user := os.Getenv("PRISM_USER")
+	pass := os.Getenv("PRISM_PASS")
 
-	wg := &sync.WaitGroup{}
+	if host == "" || port == "" || user == "" || pass == "" {
+		t.Skip("skipping test; environment variables not set")
+	}
 
-	wg.Add(1)
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				t.Error("timeout")
-				wg.Done()
-				return
-			case msg := <-c.C():
-				wg.Done()
-				println(string(msg.Fields[0]))
-				t.Error("unexpected message")
-				return
-			}
-		}
-	}()
-
-	err := c.Connect(user, pass)
-	require.NoError(t, err)
-
-	err = c.Send(Message{
-		Subject: SubjectLogin1,
-		Fields:  [][]byte{[]byte("1"), []byte(user), []byte(c.cck)},
+	c := NewClient(ClientConfig{
+		Host:     host,
+		Port:     port,
+		Username: user,
+		Password: pass,
 	})
-	require.NoError(t, err)
 
-	wg.Wait()
+	err := c.Connect()
+	require.NoError(t, err)
 }

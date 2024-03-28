@@ -23,10 +23,10 @@ type Client struct {
 }
 
 type ClientConfig struct {
-	IP   string
-	Port string
-	User string
-	Pass string
+	Host     string
+	Port     string
+	Username string
+	Password string
 }
 
 func NewClient(config ClientConfig) *Client {
@@ -36,7 +36,7 @@ func NewClient(config ClientConfig) *Client {
 }
 
 func (c *Client) Connect() error {
-	conn, err := net.Dial("tcp", net.JoinHostPort(c.config.IP, c.config.Port))
+	conn, err := net.Dial("tcp", net.JoinHostPort(c.config.Host, c.config.Port))
 	if err != nil {
 		return err
 	}
