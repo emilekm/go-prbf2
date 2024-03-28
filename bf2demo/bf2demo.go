@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-type DemoMetadata struct {
+type Metadata struct {
 	ServerName string
 	StartTime  string
 	MapName    string
@@ -25,8 +25,8 @@ func Open(path string) (io.ReadCloser, error) {
 	return zlib.NewReader(file)
 }
 
-func DecodeMetadata(r io.Reader) (*DemoMetadata, error) {
-	var metadata DemoMetadata
+func DecodeMetadata(r io.Reader) (*Metadata, error) {
+	var metadata Metadata
 
 	err := binary.Read(r, demoEndian, make([]byte, 4)) // skip first 4 bytes
 	if err != nil {
