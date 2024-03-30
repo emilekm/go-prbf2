@@ -1,130 +1,144 @@
 package prism
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"slices"
 	"sync"
 	"time"
 )
 
+const defaultTimeout = 5 * time.Second
+
 type Responder struct {
-	receiver     *Receiver
-	chatReceiver *BufferReceiver[ChatMessage]
-	sender       *Transmitter
-	mutex        sync.Mutex
+	c       *Client
+	Timeout time.Duration
 }
 
-func NewResponder(receiver *Receiver, chatReceiver *BufferReceiver[ChatMessage], sender *Transmitter) *Responder {
+func NewResponder(c *Client) *Responder {
 	return &Responder{
-		receiver:     receiver,
-		chatReceiver: chatReceiver,
-		sender:       sender,
+		c:       c,
+		Timeout: defaultTimeout,
 	}
 }
 
-type SendOpts struct {
-	ResponseSubjects []Subject
-	ChatMessageType  *ChatMessageType
+type ResponseOption func(*responseOptions)
+
+type responseFilter func(Message) (Message, bool)
+
+type responseOptions struct {
+	filters []responseFilter
+}
+
+func filterOnChatMessage(m Message, typ ChatMessageType) (Message, bool) {
+	if m.Subject() != SubjectChat {
+		return nil, false
+	}
+
+	chatMsgs, ok := m.(ChatMessages)
+	if !ok {
+		return nil, false
+	}
+
+	for _, chatMsg := range chatMsgs {
+		if chatMsg.Type == typ {
+			return chatMsg, true
+		}
+	}
+
+	return nil, false
+}
+
+func ResponseWithChatMessage(typ ChatMessageType) ResponseOption {
+	return func(o *responseOptions) {
+		o.filters = append(o.filters, func(m Message) (Message, bool) {
+			return filterOnChatMessage(m, typ)
+		})
+	}
+}
+
+func ResponseWithMessageSubject(sub Subject) ResponseOption {
+	return func(o *responseOptions) {
+		o.filters = append(o.filters, func(m Message) (Message, bool) {
+			if m.Subject() != sub {
+				return nil, false
+			}
+			return m, true
+		})
+	}
 }
 
 type Response struct {
-	Messages    []Message
-	ChatMessage *ChatMessage
+	Messages []Message
 }
 
-func (r *Responder) Send(msg Message, opts *SendOpts) (*Response, error) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	if opts == nil {
-		opts = &SendOpts{}
+func (r *Responder) SendWithResponse(ctx context.Context, msg Message, responseOpts ...ResponseOption) (*Response, error) {
+	var opts responseOptions
+	for _, opt := range responseOpts {
+		opt(&opts)
 	}
 
-	subjects := append([]Subject{}, opts.ResponseSubjects...)
-
 	var resp Response
-	var subjectErr error
+	var respErr error
+
+	id := r.c.Next()
+	r.c.StartRequest(id)
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
-		timer := time.NewTimer(5 * time.Second)
+
+		sub := r.c.Subscribe()
+		defer r.c.Unsubscribe(sub)
+
+		timer := time.NewTimer(r.c.Timeout)
+
+		filters := opts.filters[:]
 		for {
-			if len(subjects) == 0 {
+			if len(filters) == 0 {
 				return
 			}
 
-			sub := r.receiver.Listen()
-
 			select {
-			case <-timer.C:
-				subjectErr = errors.New("timeout")
+			case <-ctx.Done():
+				respErr = ctx.Err()
 				return
-			case m := <-sub.Channel:
-				println(m.Subject)
-				if i := slices.Index(subjects, m.Subject); i != -1 {
-					resp.Messages = append(resp.Messages, m)
-					subjects = append(subjects[:i], subjects[i+1:]...)
+			case <-timer.C:
+				respErr = errors.New("timeout")
+				return
+			case m := <-sub:
+				if isErrorMessage(m) {
+					respErr = m.(error)
+					return
 				}
-				if slices.Contains(errorSubjects, m.Subject) {
-					var msgErr2 Error
-					err := UnmarshalInto(msg, &msgErr2)
-					if err != nil {
-						subjectErr = fmt.Errorf("unmarshal error: %w", err)
-						return
+
+				if msg, ok := filters[0](m); ok {
+					resp.Messages = append(resp.Messages, msg)
+					if len(filters) > 0 {
+						filters = filters[1:]
 					}
-					subjectErr = msgErr2
-					return
 				}
 			}
 		}
 	}()
 
-	var chatErr error
-
-	go func() {
-		defer wg.Done()
-
-		timer := time.NewTimer(2 * time.Second)
-		sub := r.chatReceiver.Listen()
-
-		for {
-			if opts.ChatMessageType == nil {
-				return
-			}
-
-			select {
-			case <-timer.C:
-				chatErr = errors.New("timeout")
-				return
-			case m := <-sub.Channel:
-				if m.Type == *opts.ChatMessageType {
-					resp.ChatMessage = &m
-					return
-				}
-			}
-		}
-	}()
-
-	time.Sleep(300 * time.Millisecond)
-
-	err := r.sender.SendRaw(msg.Encode())
-	if err != nil {
-		return nil, fmt.Errorf("send: %w", err)
+	if err := r.c.Send(msg); err != nil {
+		return nil, err
 	}
 
 	wg.Wait()
 
-	if subjectErr != nil {
-		return nil, fmt.Errorf("send subject err: %w", subjectErr)
-	}
+	r.c.EndRequest(id)
 
-	if chatErr != nil {
-		return nil, fmt.Errorf("send chat err: %w", chatErr)
+	if respErr != nil {
+		return nil, respErr
 	}
 
 	return &resp, nil
+}
+
+func isErrorMessage(m Message) bool {
+	return slices.Contains(errorSubjects, m.Subject())
 }

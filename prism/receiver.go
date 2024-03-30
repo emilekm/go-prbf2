@@ -3,55 +3,57 @@ package prism
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
-	"os"
+	"log/slog"
 )
 
 type Receiver struct {
-	reader io.Reader
+	r      io.Reader
 	broker *Broker[Message]
 }
 
 func NewReceiver(r io.Reader) *Receiver {
 	receiver := &Receiver{
-		reader: r,
+		r:      r,
 		broker: NewBroker[Message](),
 	}
 
-	receiver.Start()
+	receiver.start()
 
 	return receiver
 }
 
-func (r *Receiver) Listen() *Subscriber[Message] {
+func (r *Receiver) Subscribe() Subscriber[Message] {
 	return r.broker.Subscribe()
 }
 
-func (r *Receiver) Start() {
-	scanner := bufio.NewScanner(io.TeeReader(r.reader, os.Stdout))
+func (r *Receiver) Unsubscribe(sub Subscriber[Message]) {
+	r.broker.Unsubscribe(sub)
+}
+
+func (r *Receiver) start() {
+	scanner := bufio.NewScanner(r.r)
 	scanner.Split(splitMessages)
 
 	go func() {
 		for scanner.Scan() {
-			msg, err := DecodeMessage(scanner.Bytes())
+			buf := scanner.Bytes()
+			msg, err := Decode(buf)
 			if err != nil {
-				fmt.Println("decode error:", err)
-				continue
+				slog.Warn("failed to decode message", "error", err)
 			}
-
-			r.broker.Publish(*msg)
+			r.broker.Publish(msg)
 		}
 	}()
 }
 
 func splitMessages(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	msg, _, found := bytes.Cut(data, SeparatorEnd)
+	msg, _, found := bytes.Cut(data, SeparatorNull)
 	if !found {
 		return 0, nil, nil
 	}
 
-	advance = len(msg) + len(SeparatorEnd)
+	advance = len(msg) + len(SeparatorNull)
 
 	return advance, msg, nil
 }

@@ -4,7 +4,8 @@ var (
 	SeparatorStart   = []byte{0x01}
 	SeparatorSubject = []byte{0x02}
 	SeparatorField   = []byte{0x03}
-	SeparatorEnd     = []byte{0x04, 0x00}
+	SeparatorEnd     = []byte{0x04}
+	SeparatorNull    = []byte{0x00}
 	SeparatorBuffer  = []byte{0x0A}
 )
 

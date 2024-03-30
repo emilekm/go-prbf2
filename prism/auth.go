@@ -2,39 +2,50 @@ package prism
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
 )
 
-func auth(r *Responder, config ClientConfig) error {
-	cck := cck(32)
+type Auth struct {
+	c *Client
+}
+
+func NewAuth(c *Client) *Auth {
+	return &Auth{c: c}
+}
+
+func (a *Auth) Login(username, password string) error {
+	ctx := context.Background()
+	cck := cckGen(32)
 
 	login1Req := Login1Request{
 		ServerVersion:      ServerVersion1,
-		Username:           config.Username,
+		Username:           username,
 		ClientChallengeKey: cck,
 	}
 
-	resp, err := r.Send(Marshal(login1Req), &SendOpts{
-		ResponseSubjects: []Subject{SubjectLogin1},
-	})
+	resp, err := a.c.SendWithResponse(
+		ctx,
+		login1Req,
+		ResponseWithMessageSubject(SubjectLogin1),
+	)
 	if err != nil {
 		return fmt.Errorf("login1: %w", err)
 	}
 
-	var login1Resp Login1Response
-	err = UnmarshalInto(resp.Messages[0], &login1Resp)
-	if err != nil {
-		return fmt.Errorf("login1: %w", err)
+	login1Resp, ok := resp.Messages[0].(*Login1Response)
+	if !ok {
+		return fmt.Errorf("login1: unexpected response type")
 	}
 
 	passwordHash := sha1.New()
 	saltedPassword := sha1.New()
 	challengeDigest := sha1.New()
 
-	_, err = passwordHash.Write([]byte(config.Password))
+	_, err = passwordHash.Write([]byte(password))
 	if err != nil {
 		return err
 	}
@@ -50,7 +61,7 @@ func auth(r *Responder, config ClientConfig) error {
 	_, err = challengeDigest.Write(
 		bytes.Join(
 			[][]byte{
-				[]byte(config.Username),
+				[]byte(username),
 				cck,
 				login1Resp.ServerChallenge,
 				[]byte(hex.EncodeToString(saltedPassword.Sum(nil))),
@@ -66,9 +77,11 @@ func auth(r *Responder, config ClientConfig) error {
 		ChallengeDigest: hex.EncodeToString(challengeDigest.Sum(nil)),
 	}
 
-	_, err = r.Send(Marshal(login2Req), &SendOpts{
-		ResponseSubjects: []Subject{SubjectConnected},
-	})
+	_, err = a.c.SendWithResponse(
+		ctx,
+		login2Req,
+		ResponseWithMessageSubject(SubjectConnected),
+	)
 	if err != nil {
 		return fmt.Errorf("login2: %w", err)
 	}
@@ -78,7 +91,7 @@ func auth(r *Responder, config ClientConfig) error {
 
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func cck(n int) []byte {
+func cckGen(n int) []byte {
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
