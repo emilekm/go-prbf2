@@ -15,11 +15,6 @@ type FieldsEncoder interface {
 	EncodeFields() ([][]byte, error)
 }
 
-type message struct {
-	subject Subject
-	fields  [][]byte
-}
-
 func Encode(msg Message) ([]byte, error) {
 	var fields [][]byte
 	var err error

@@ -8,7 +8,7 @@ func stringToBytes(s string) []byte {
 	return b
 }
 
-func bytesToString(b []byte) string {
-	p := unsafe.SliceData(b)
-	return unsafe.String(p, len(b))
-}
+// func bytesToString(b []byte) string {
+// 	p := unsafe.SliceData(b)
+// 	return unsafe.String(p, len(b))
+// }
