@@ -2,29 +2,21 @@ package prism
 
 import (
 	"context"
-	"errors"
-	"slices"
+	"net/textproto"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const defaultTimeout = 5 * time.Second
 
-type Responder struct {
-	c       *Client
-	Timeout time.Duration
-}
-
-func NewResponder(c *Client) *Responder {
-	return &Responder{
-		c:       c,
-		Timeout: defaultTimeout,
-	}
-}
-
 type ResponseOption func(*responseOptions)
 
-type responseFilter func(Message) (Message, bool)
+type responseFilter struct {
+	Subject *Subject
+	F       func(Message) (Message, bool)
+}
 
 type responseOptions struct {
 	filters []responseFilter
@@ -51,25 +43,41 @@ func filterOnChatMessage(m Message, typ ChatMessageType) (Message, bool) {
 
 func ResponseWithChatMessage(typ ChatMessageType) ResponseOption {
 	return func(o *responseOptions) {
-		o.filters = append(o.filters, func(m Message) (Message, bool) {
-			return filterOnChatMessage(m, typ)
+		s := SubjectChat
+		o.filters = append(o.filters, responseFilter{
+			Subject: &s,
+			F: func(m Message) (Message, bool) {
+				return filterOnChatMessage(m, typ)
+			},
 		})
 	}
 }
 
 func ResponseWithMessageSubject(sub Subject) ResponseOption {
 	return func(o *responseOptions) {
-		o.filters = append(o.filters, func(m Message) (Message, bool) {
-			if m.Subject() != sub {
-				return nil, false
-			}
-			return m, true
+		o.filters = append(o.filters, responseFilter{
+			Subject: &sub,
 		})
 	}
 }
 
 type Response struct {
 	Messages []Message
+}
+
+type Responder struct {
+	textproto.Pipeline
+	receiver *Receiver
+	writer   *Writer
+	Timeout  time.Duration
+}
+
+func NewResponder(receiver *Receiver, writer *Writer) *Responder {
+	return &Responder{
+		receiver: receiver,
+		writer:   writer,
+		Timeout:  defaultTimeout,
+	}
 }
 
 func (r *Responder) SendWithResponse(ctx context.Context, msg Message, responseOpts ...ResponseOption) (*Response, error) {
@@ -79,66 +87,125 @@ func (r *Responder) SendWithResponse(ctx context.Context, msg Message, responseO
 	}
 
 	var resp Response
-	var respErr error
 
-	id := r.c.Next()
-	r.c.StartRequest(id)
+	id := r.Next()
+	r.StartRequest(id)
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	ctx, cancel := context.WithTimeout(ctx, r.Timeout)
 
-	go func() {
-		defer wg.Done()
+	wg := &sync.WaitGroup{}
 
-		sub := r.c.Subscribe()
-		defer r.c.Unsubscribe(sub)
+	errGroup, eCtx := errgroup.WithContext(ctx)
 
-		timer := time.NewTimer(r.c.Timeout)
+	wg.Add(2)
+	errGroup.Go(errorListener(eCtx, r.receiver, SubjectError, wg))
+	errGroup.Go(errorListener(eCtx, r.receiver, SubjectCriticalError, wg))
 
-		filters := opts.filters[:]
-		for {
-			if len(filters) == 0 {
-				return
-			}
+	respCh := make(chan Message, len(opts.filters))
 
-			select {
-			case <-ctx.Done():
-				respErr = ctx.Err()
-				return
-			case <-timer.C:
-				respErr = errors.New("timeout")
-				return
-			case m := <-sub:
-				if isErrorMessage(m) {
-					respErr = m.(error)
-					return
-				}
+	successGroup, sCtx := errgroup.WithContext(ctx)
 
-				if msg, ok := filters[0](m); ok {
-					resp.Messages = append(resp.Messages, msg)
-					if len(filters) > 0 {
-						filters = filters[1:]
-					}
-				}
-			}
-		}
-	}()
+	for _, filter := range opts.filters {
+		wg.Add(1)
+		successGroup.Go(filterListener(sCtx, r.receiver, filter, respCh, wg))
+	}
 
-	if err := r.c.Send(msg); err != nil {
+	// Wait until everyone is listening
+	wg.Wait()
+
+	if err := r.writer.WriteMessage(msg); err != nil {
+		cancel()
 		return nil, err
 	}
 
-	wg.Wait()
+	multiErrGroup, _ := errgroup.WithContext(ctx)
+	for _, g := range []*errgroup.Group{errGroup, successGroup} {
+		g := g
+		multiErrGroup.Go(func() error {
+			err := g.Wait()
+			cancel()
+			return err
+		})
+	}
 
-	r.c.EndRequest(id)
+	err := multiErrGroup.Wait()
+	cancel()
+	if err != nil {
+		return nil, err
+	}
 
-	if respErr != nil {
-		return nil, respErr
+	r.EndRequest(id)
+
+	for msg := range respCh {
+		resp.Messages = append(resp.Messages, msg)
+		if len(resp.Messages) == len(opts.filters) {
+			break
+		}
 	}
 
 	return &resp, nil
 }
 
-func isErrorMessage(m Message) bool {
-	return slices.Contains(errorSubjects, m.Subject())
+func errorListener(ctx context.Context, r *Receiver, errSubject Subject, wg *sync.WaitGroup) func() error {
+	return func() error {
+		sub := r.Subscribe(&errSubject)
+		defer r.Unsubscribe(sub)
+
+		// Mark that we are listening
+		wg.Done()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case msg := <-sub:
+				var respErr Error
+				err := DecodeContent(msg.Content(), &respErr)
+				if err != nil {
+					return err
+				}
+
+				return respErr
+			}
+		}
+	}
+}
+
+func filterListener(ctx context.Context, r *Receiver, filter responseFilter, c chan Message, wg *sync.WaitGroup) func() error {
+	return func() error {
+		var sub SimpleSubscriber
+		if filter.Subject != nil {
+			sub = r.Subscribe(filter.Subject)
+		} else {
+			sub = r.Subscribe(nil)
+		}
+		defer r.Unsubscribe(sub)
+
+		// Mark that we are listening
+		wg.Done()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case msg := <-sub:
+				var selectedMsg Message
+
+				if filter.F != nil {
+					var ok bool
+					selectedMsg, ok = filter.F(msg)
+					if !ok {
+						continue
+					}
+				}
+
+				if selectedMsg == nil {
+					selectedMsg = msg
+				}
+
+				c <- msg
+				return nil
+			}
+		}
+	}
 }

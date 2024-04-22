@@ -6,6 +6,7 @@ var (
 	SeparatorField   = []byte{0x03}
 	SeparatorEnd     = []byte{0x04}
 	SeparatorNull    = []byte{0x00}
+	SeparatorNull1   = byte(0x00)
 	SeparatorBuffer  = []byte{0x0A}
 )
 

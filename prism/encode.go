@@ -7,53 +7,36 @@ import (
 	"strconv"
 )
 
-type MessageEncoder interface {
-	Encode() ([]byte, error)
+type Message interface {
+	Subject() Subject
 }
 
-type FieldsEncoder interface {
-	EncodeFields() ([][]byte, error)
-}
-
-func Encode(msg Message) ([]byte, error) {
-	var fields [][]byte
-	var err error
-
-	if encoder, ok := msg.(MessageEncoder); ok {
-		return encoder.Encode()
+func Encode(msg Message) []byte {
+	if rawMsg, ok := msg.(*RawMessage); ok {
+		return rawMsg.Encode()
 	}
 
+	content, err := EncodeContent(msg)
+	if err != nil {
+		return nil
+	}
+
+	return NewRawMessage(msg.Subject(), content).Encode()
+}
+
+func EncodeContent(msg any) ([]byte, error) {
 	val := reflect.ValueOf(msg)
 
-	fields, err = encode(val)
+	fields, err := encode(val)
 	if err != nil {
 		return nil, err
 	}
 
-	return bytes.Join(
-		[][]byte{
-			SeparatorStart,
-			stringToBytes(string(msg.Subject())),
-			SeparatorSubject,
-			bytes.Join(fields, SeparatorField),
-			SeparatorEnd,
-			SeparatorNull,
-		},
-		[]byte{},
-	), nil
+	return bytes.Join(fields, SeparatorField), nil
 }
 
 func encode(val reflect.Value) ([][]byte, error) {
 	var fields [][]byte
-
-	if val.Type().Implements(reflect.TypeOf((*FieldsEncoder)(nil)).Elem()) && val.CanInterface() {
-		dec := val.Interface().(FieldsEncoder)
-		fields, err := dec.EncodeFields()
-		if err != nil {
-			return nil, err
-		}
-		return fields, nil
-	}
 
 	switch val.Kind() {
 	case reflect.Bool:

@@ -8,11 +8,11 @@ import (
 	"strconv"
 )
 
-type FieldsDecoder interface {
-	DecodeFields(content []byte) error
+type ContentDecoder interface {
+	Decode(content []byte) error
 }
 
-func DecodePlain(data []byte) (Subject, []byte, error) {
+func decodeData(data []byte) (Subject, []byte, error) {
 	// Make sure we arent reading data after the end separator
 	// or with it
 	data, _, _ = bytes.Cut(data, SeparatorEnd)
@@ -31,9 +31,40 @@ func DecodePlain(data []byte) (Subject, []byte, error) {
 	return Subject(subject), content, nil
 }
 
+func DecodeRaw(data []byte) (*RawMessage, error) {
+	subject, content, err := decodeData(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RawMessage{
+		subject: subject,
+		content: content,
+	}, nil
+}
+
+func Decode[T Message](data []byte) (*T, error) {
+	subject, content, err := decodeData(data)
+	if err != nil {
+		return nil, err
+	}
+
+	var msg T
+	if msg.Subject() != subject {
+		return nil, errors.New("subject mismatch")
+	}
+
+	err = DecodeContent(content, &msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &msg, err
+}
+
 func DecodeContent(content []byte, into any) error {
-	if decoder, ok := into.(FieldsDecoder); ok {
-		return decoder.DecodeFields(content)
+	if decoder, ok := into.(ContentDecoder); ok {
+		return decoder.Decode(content)
 	}
 
 	val := reflect.Indirect(reflect.ValueOf(into))
@@ -42,30 +73,6 @@ func DecodeContent(content []byte, into any) error {
 	fieldsScanner.Split(splitFieldsFunc)
 
 	return decode(val, fieldsScanner)
-}
-
-func Decode(data []byte) (Message, error) {
-	subject, content, err := DecodePlain(data)
-	if err != nil {
-		return nil, err
-	}
-
-	var msg Message
-	switch subject {
-	case (&Login1Response{}).Subject():
-		msg = &Login1Response{}
-	case (&ChatMessages{}).Subject():
-		msg = &ChatMessages{}
-	default:
-		return nil, errors.New("unknown message")
-	}
-
-	err = DecodeContent(content, msg)
-	if err != nil {
-		return nil, err
-	}
-
-	return msg, nil
 }
 
 var errFieldCount = errors.New("field count mismatch")

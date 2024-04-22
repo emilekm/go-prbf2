@@ -17,8 +17,11 @@ func NewAuth(c *Client) *Auth {
 	return &Auth{c: c}
 }
 
-func (a *Auth) Login(username, password string) error {
-	ctx := context.Background()
+func (a *Auth) Login(ctx context.Context, username, password string) error {
+	receiver := NewReceiver(&a.c.Reader)
+	defer receiver.Close()
+	responder := NewResponder(receiver, &a.c.Writer)
+
 	cck := cckGen(32)
 
 	login1Req := Login1Request{
@@ -27,7 +30,7 @@ func (a *Auth) Login(username, password string) error {
 		ClientChallengeKey: cck,
 	}
 
-	resp, err := a.c.SendWithResponse(
+	resp, err := responder.SendWithResponse(
 		ctx,
 		login1Req,
 		ResponseWithMessageSubject(SubjectLogin1),
@@ -36,9 +39,10 @@ func (a *Auth) Login(username, password string) error {
 		return fmt.Errorf("login1: %w", err)
 	}
 
-	login1Resp, ok := resp.Messages[0].(*Login1Response)
-	if !ok {
-		return fmt.Errorf("login1: unexpected response type")
+	var login1Resp Login1Response
+	err = DecodeContent(resp.Messages[0].(RawMessage).Content(), &login1Resp)
+	if err != nil {
+		return fmt.Errorf("login1: %w", err)
 	}
 
 	passwordHash := sha1.New()
@@ -77,7 +81,7 @@ func (a *Auth) Login(username, password string) error {
 		ChallengeDigest: hex.EncodeToString(challengeDigest.Sum(nil)),
 	}
 
-	_, err = a.c.SendWithResponse(
+	_, err = responder.SendWithResponse(
 		ctx,
 		login2Req,
 		ResponseWithMessageSubject(SubjectConnected),

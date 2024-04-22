@@ -1,59 +1,57 @@
 package prism
 
 import (
-	"bufio"
-	"bytes"
-	"io"
+	"context"
 	"log/slog"
 )
 
 type Receiver struct {
-	r      io.Reader
-	broker *Broker[Message]
+	r      *Reader
+	broker *SimpleBroker
+	cancel context.CancelFunc
 }
 
-func NewReceiver(r io.Reader) *Receiver {
+func NewReceiver(r *Reader) *Receiver {
 	receiver := &Receiver{
 		r:      r,
-		broker: NewBroker[Message](),
+		broker: NewSimpleBroker(),
 	}
 
-	receiver.start()
+	receiver.receive()
 
 	return receiver
 }
 
-func (r *Receiver) Subscribe() Subscriber[Message] {
-	return r.broker.Subscribe()
-}
-
-func (r *Receiver) Unsubscribe(sub Subscriber[Message]) {
-	r.broker.Unsubscribe(sub)
-}
-
-func (r *Receiver) start() {
-	scanner := bufio.NewScanner(r.r)
-	scanner.Split(splitMessages)
+func (r *Receiver) receive() {
+	ctx, cancel := context.WithCancel(context.Background())
+	r.cancel = cancel
 
 	go func() {
-		for scanner.Scan() {
-			buf := scanner.Bytes()
-			msg, err := Decode(buf)
-			if err != nil {
-				slog.Warn("failed to decode message", "error", err)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				rawMsg, err := r.r.ReadMessage()
+				if err != nil {
+					slog.Warn("failed to read message", "error", err)
+					continue
+				}
+				r.broker.Publish(rawMsg)
 			}
-			r.broker.Publish(msg)
 		}
 	}()
 }
 
-func splitMessages(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	msg, _, found := bytes.Cut(data, SeparatorNull)
-	if !found {
-		return 0, nil, nil
-	}
+func (r *Receiver) Subscribe(subject *Subject) SimpleSubscriber {
+	return r.broker.Subscribe(subject)
+}
 
-	advance = len(msg) + len(SeparatorNull)
+func (r *Receiver) Unsubscribe(sub SimpleSubscriber) {
+	r.broker.Unsubscribe(sub)
+}
 
-	return advance, msg, nil
+func (r *Receiver) Close() {
+	r.broker.Close()
+	r.cancel()
 }

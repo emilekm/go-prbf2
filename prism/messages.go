@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-type Message interface {
-	Subject() Subject
+type MessageDecoder interface {
+	Decode(RawMessage) error
 }
 
 type ServerVersion string
@@ -72,7 +72,7 @@ func (m ChatMessages) Subject() Subject {
 	return SubjectChat
 }
 
-func (m *ChatMessages) DecodeFields(content []byte) error {
+func (m *ChatMessages) Decode(content []byte) error {
 	messages := bytes.Split(content, SeparatorBuffer)
 
 	for _, message := range messages {
@@ -106,7 +106,7 @@ func (m KillMessages) Subject() Subject {
 	return SubjectKill
 }
 
-func (m *KillMessages) DecodeFields(content []byte) error {
+func (m *KillMessages) Decode(content []byte) error {
 	messages := bytes.Split(content, SeparatorBuffer)
 
 	for _, message := range messages {

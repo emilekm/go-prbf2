@@ -1,6 +1,7 @@
 package prism
 
 import (
+	"bufio"
 	"io"
 	"net"
 	"net/textproto"
@@ -8,9 +9,8 @@ import (
 
 type Client struct {
 	*textproto.Pipeline
-	Receiver
-	Transmitter
-	Responder
+	Reader
+	Writer
 	Auth *Auth
 	conn io.ReadWriteCloser
 }
@@ -19,13 +19,12 @@ func NewClient(conn io.ReadWriteCloser) *Client {
 	pipeline := &textproto.Pipeline{}
 
 	c := &Client{
-		Pipeline:    pipeline,
-		Receiver:    *NewReceiver(conn),
-		Transmitter: *NewTransmitter(conn, pipeline),
-		conn:        conn,
+		Pipeline: pipeline,
+		Reader:   Reader{R: bufio.NewReader(conn)},
+		Writer:   Writer{W: bufio.NewWriter(conn)},
+		conn:     conn,
 	}
 
-	c.Responder = *NewResponder(c)
 	c.Auth = NewAuth(c)
 
 	return c

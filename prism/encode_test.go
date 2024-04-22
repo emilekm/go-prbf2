@@ -34,10 +34,10 @@ func TestEncode(t *testing.T) {
 		},
 	}
 
-	data, err := prism.Encode(msg)
+	data, err := prism.EncodeContent(msg)
 	require.NoError(t, err)
 
-	require.Equal(t, []byte("\x01test\x02sha\x03hash\x03-123\x0312\x03123\x04\x00"), data)
+	require.Equal(t, []byte("sha\x03hash\x03-123\x0312\x03123"), data)
 }
 
 func pointer[T any](v T) *T {
