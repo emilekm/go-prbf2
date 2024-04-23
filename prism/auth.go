@@ -41,40 +41,19 @@ func (a *Auth) Login(ctx context.Context, username, password string) error {
 		return fmt.Errorf("login1: %w", err)
 	}
 
-	passwordHash := sha1.New()
-	saltedPassword := sha1.New()
-	challengeDigest := sha1.New()
-
-	_, err = passwordHash.Write([]byte(password))
-	if err != nil {
-		return err
-	}
-
-	salted := append(login1Resp.Hash, SeparatorStart...)
-	salted = append(salted, hex.EncodeToString(passwordHash.Sum(nil))...)
-
-	_, err = saltedPassword.Write(salted)
-	if err != nil {
-		return err
-	}
-
-	_, err = challengeDigest.Write(
-		bytes.Join(
-			[][]byte{
-				[]byte(username),
-				cck,
-				login1Resp.ServerChallenge,
-				[]byte(hex.EncodeToString(saltedPassword.Sum(nil))),
-			},
-			SeparatorField,
-		),
+	challengeDigestHash, err := prepareChallengeDigest(
+		username,
+		password,
+		login1Resp.Hash,
+		cck,
+		login1Resp.ServerChallenge,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("login1: challengedigest: %w", err)
 	}
 
 	login2Req := Login2Request{
-		ChallengeDigest: hex.EncodeToString(challengeDigest.Sum(nil)),
+		ChallengeDigest: challengeDigestHash,
 	}
 
 	_, err = a.c.Send(
@@ -97,4 +76,33 @@ func cckGen(n int) []byte {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return b
+}
+
+func stringHash(s string) string {
+	h := sha1.New()
+	_, _ = h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func bytesHash(b ...[]byte) string {
+	h := sha1.New()
+	_, _ = h.Write(bytes.Join(b, nil))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func prepareChallengeDigest(username, password string, salt, clientChallenge, serverChallenge []byte) (string, error) {
+	passwordHash := stringHash(password)
+
+	saltedPasswordHash := bytesHash(salt, SeparatorStart, []byte(passwordHash))
+
+	challengeDigestHash := bytesHash(
+		bytes.Join([][]byte{
+			[]byte(username),
+			clientChallenge,
+			serverChallenge,
+			[]byte(saltedPasswordHash),
+		}, SeparatorField),
+	)
+
+	return challengeDigestHash, nil
 }
