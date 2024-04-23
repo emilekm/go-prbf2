@@ -40,7 +40,7 @@ func (a *Auth) Login(ctx context.Context, username, password string) error {
 	}
 
 	var login1Resp Login1Response
-	err = DecodeContent(resp.Messages[0].(RawMessage).Content(), &login1Resp)
+	err = DecodeRawMessage(resp.Messages[0], &login1Resp)
 	if err != nil {
 		return fmt.Errorf("login1: %w", err)
 	}

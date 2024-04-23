@@ -127,7 +127,7 @@ func (b *PassThroughBroker[T]) enablePassThrough() {
 				}
 
 				var msg T
-				err := DecodeContent(rawMsg.Content(), &msg)
+				err := decodeContent(rawMsg.Content(), &msg)
 				if err != nil {
 					fmt.Printf("Failed to decode message: %v\n", err)
 					continue

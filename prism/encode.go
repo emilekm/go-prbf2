@@ -11,20 +11,20 @@ type Message interface {
 	Subject() Subject
 }
 
-func Encode(msg Message) []byte {
+func EncodeMessage(msg Message) (*RawMessage, error) {
 	if rawMsg, ok := msg.(*RawMessage); ok {
-		return rawMsg.Encode()
+		return rawMsg, nil
 	}
 
-	content, err := EncodeContent(msg)
+	content, err := encodeContent(msg)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
-	return NewRawMessage(msg.Subject(), content).Encode()
+	return NewRawMessage(msg.Subject(), content), nil
 }
 
-func EncodeContent(msg any) ([]byte, error) {
+func encodeContent(msg any) ([]byte, error) {
 	val := reflect.ValueOf(msg)
 
 	fields, err := encode(val)

@@ -77,7 +77,7 @@ func (m *ChatMessages) Decode(content []byte) error {
 
 	for _, message := range messages {
 		var msg ChatMessage
-		err := DecodeContent(message, &msg)
+		err := decodeContent(message, &msg)
 		if err != nil {
 			return err
 		}
@@ -111,7 +111,7 @@ func (m *KillMessages) Decode(content []byte) error {
 
 	for _, message := range messages {
 		var msg KillMessage
-		err := DecodeContent(message, &msg)
+		err := decodeContent(message, &msg)
 		if err != nil {
 			return err
 		}

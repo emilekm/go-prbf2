@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/emilekm/go-prbf2/prism"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,10 +35,11 @@ func TestEncode(t *testing.T) {
 		},
 	}
 
-	data, err := prism.EncodeContent(msg)
+	rawMsg, err := prism.EncodeMessage(msg)
 	require.NoError(t, err)
 
-	require.Equal(t, []byte("sha\x03hash\x03-123\x0312\x03123"), data)
+	assert.Equal(t, []byte("sha\x03hash\x03-123\x0312\x03123"), rawMsg.Content())
+	assert.Equal(t, prism.Subject("test"), rawMsg.Subject())
 }
 
 func pointer[T any](v T) *T {

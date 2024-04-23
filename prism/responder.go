@@ -14,55 +14,23 @@ const defaultTimeout = 5 * time.Second
 type ResponseOption func(*responseOptions)
 
 type responseFilter struct {
-	Subject *Subject
-	F       func(Message) (Message, bool)
+	Subject Subject
 }
 
 type responseOptions struct {
 	filters []responseFilter
 }
 
-func filterOnChatMessage(m Message, typ ChatMessageType) (Message, bool) {
-	if m.Subject() != SubjectChat {
-		return nil, false
-	}
-
-	chatMsgs, ok := m.(ChatMessages)
-	if !ok {
-		return nil, false
-	}
-
-	for _, chatMsg := range chatMsgs {
-		if chatMsg.Type == typ {
-			return chatMsg, true
-		}
-	}
-
-	return nil, false
-}
-
-func ResponseWithChatMessage(typ ChatMessageType) ResponseOption {
-	return func(o *responseOptions) {
-		s := SubjectChat
-		o.filters = append(o.filters, responseFilter{
-			Subject: &s,
-			F: func(m Message) (Message, bool) {
-				return filterOnChatMessage(m, typ)
-			},
-		})
-	}
-}
-
 func ResponseWithMessageSubject(sub Subject) ResponseOption {
 	return func(o *responseOptions) {
 		o.filters = append(o.filters, responseFilter{
-			Subject: &sub,
+			Subject: sub,
 		})
 	}
 }
 
 type Response struct {
-	Messages []Message
+	Messages []*RawMessage
 }
 
 type Responder struct {
@@ -101,7 +69,7 @@ func (r *Responder) SendWithResponse(ctx context.Context, msg Message, responseO
 	errGroup.Go(errorListener(eCtx, r.receiver, SubjectError, wg))
 	errGroup.Go(errorListener(eCtx, r.receiver, SubjectCriticalError, wg))
 
-	respCh := make(chan Message, len(opts.filters))
+	respCh := make(chan *RawMessage, len(opts.filters))
 
 	successGroup, sCtx := errgroup.WithContext(ctx)
 
@@ -160,7 +128,7 @@ func errorListener(ctx context.Context, r *Receiver, errSubject Subject, wg *syn
 				return nil
 			case msg := <-sub:
 				var respErr Error
-				err := DecodeContent(msg.Content(), &respErr)
+				err := decodeContent(msg.Content(), &respErr)
 				if err != nil {
 					return err
 				}
@@ -171,14 +139,9 @@ func errorListener(ctx context.Context, r *Receiver, errSubject Subject, wg *syn
 	}
 }
 
-func filterListener(ctx context.Context, r *Receiver, filter responseFilter, c chan Message, wg *sync.WaitGroup) func() error {
+func filterListener(ctx context.Context, r *Receiver, filter responseFilter, c chan *RawMessage, wg *sync.WaitGroup) func() error {
 	return func() error {
-		var sub SimpleSubscriber
-		if filter.Subject != nil {
-			sub = r.Subscribe(filter.Subject)
-		} else {
-			sub = r.Subscribe(nil)
-		}
+		sub := r.Subscribe(&filter.Subject)
 		defer r.Unsubscribe(sub)
 
 		// Mark that we are listening
@@ -189,20 +152,6 @@ func filterListener(ctx context.Context, r *Receiver, filter responseFilter, c c
 			case <-ctx.Done():
 				return nil
 			case msg := <-sub:
-				var selectedMsg Message
-
-				if filter.F != nil {
-					var ok bool
-					selectedMsg, ok = filter.F(msg)
-					if !ok {
-						continue
-					}
-				}
-
-				if selectedMsg == nil {
-					selectedMsg = msg
-				}
-
 				c <- msg
 				return nil
 			}

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 )
@@ -12,57 +13,15 @@ type ContentDecoder interface {
 	Decode(content []byte) error
 }
 
-func decodeData(data []byte) (Subject, []byte, error) {
-	// Make sure we arent reading data after the end separator
-	// or with it
-	data, _, _ = bytes.Cut(data, SeparatorEnd)
-	// Skipping data before the start separator
-	// It might be empty spaces
-	_, data, found := bytes.Cut(data, SeparatorStart)
-	if !found {
-		return "", nil, errors.New("missing start separator")
+func DecodeRawMessage(rawMsg *RawMessage, into Message) error {
+	if rawMsg.Subject() != into.Subject() {
+		return fmt.Errorf("subject mismatch: %s != %s", rawMsg.Subject(), into.Subject())
 	}
 
-	subject, content, found := bytes.Cut(data, SeparatorSubject)
-	if !found {
-		return "", nil, errors.New("missing subject separator")
-	}
-
-	return Subject(subject), content, nil
+	return decodeContent(rawMsg.Content(), into)
 }
 
-func DecodeRaw(data []byte) (*RawMessage, error) {
-	subject, content, err := decodeData(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return &RawMessage{
-		subject: subject,
-		content: content,
-	}, nil
-}
-
-func Decode[T Message](data []byte) (*T, error) {
-	subject, content, err := decodeData(data)
-	if err != nil {
-		return nil, err
-	}
-
-	var msg T
-	if msg.Subject() != subject {
-		return nil, errors.New("subject mismatch")
-	}
-
-	err = DecodeContent(content, &msg)
-	if err != nil {
-		return nil, err
-	}
-
-	return &msg, err
-}
-
-func DecodeContent(content []byte, into any) error {
+func decodeContent(content []byte, into any) error {
 	if decoder, ok := into.(ContentDecoder); ok {
 		return decoder.Decode(content)
 	}
