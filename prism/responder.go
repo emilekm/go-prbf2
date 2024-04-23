@@ -34,21 +34,22 @@ type Response struct {
 }
 
 type Responder struct {
-	textproto.Pipeline
+	pipeline *textproto.Pipeline
 	receiver *Receiver
 	writer   *Writer
 	Timeout  time.Duration
 }
 
-func NewResponder(receiver *Receiver, writer *Writer) *Responder {
+func NewResponder(receiver *Receiver, writer *Writer, pipeline *textproto.Pipeline) *Responder {
 	return &Responder{
 		receiver: receiver,
 		writer:   writer,
+		pipeline: pipeline,
 		Timeout:  defaultTimeout,
 	}
 }
 
-func (r *Responder) SendWithResponse(ctx context.Context, msg Message, responseOpts ...ResponseOption) (*Response, error) {
+func (r *Responder) Send(ctx context.Context, msg Message, responseOpts ...ResponseOption) (*Response, error) {
 	var opts responseOptions
 	for _, opt := range responseOpts {
 		opt(&opts)
@@ -56,8 +57,8 @@ func (r *Responder) SendWithResponse(ctx context.Context, msg Message, responseO
 
 	var resp Response
 
-	id := r.Next()
-	r.StartRequest(id)
+	id := r.pipeline.Next()
+	r.pipeline.StartRequest(id)
 
 	ctx, cancel := context.WithTimeout(ctx, r.Timeout)
 
@@ -102,7 +103,7 @@ func (r *Responder) SendWithResponse(ctx context.Context, msg Message, responseO
 		return nil, err
 	}
 
-	r.EndRequest(id)
+	r.pipeline.EndRequest(id)
 
 	for msg := range respCh {
 		resp.Messages = append(resp.Messages, msg)

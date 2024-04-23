@@ -8,21 +8,31 @@ import (
 )
 
 type Client struct {
-	*textproto.Pipeline
-	Reader
-	Writer
+	Receiver
+	Responder
 	Auth *Auth
-	conn io.ReadWriteCloser
+
+	conn     io.ReadWriteCloser
+	reader   *Reader
+	writer   *Writer
+	pipeline *textproto.Pipeline
 }
 
 func NewClient(conn io.ReadWriteCloser) *Client {
 	pipeline := &textproto.Pipeline{}
+	reader := &Reader{R: bufio.NewReader(conn)}
+	writer := &Writer{W: bufio.NewWriter(conn)}
+
+	receiver := NewReceiver(reader)
 
 	c := &Client{
-		Pipeline: pipeline,
-		Reader:   Reader{R: bufio.NewReader(conn)},
-		Writer:   Writer{W: bufio.NewWriter(conn)},
+		Receiver:  *receiver,
+		Responder: *NewResponder(receiver, writer, pipeline),
+
 		conn:     conn,
+		reader:   reader,
+		writer:   writer,
+		pipeline: pipeline,
 	}
 
 	c.Auth = NewAuth(c)

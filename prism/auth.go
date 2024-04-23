@@ -18,10 +18,6 @@ func NewAuth(c *Client) *Auth {
 }
 
 func (a *Auth) Login(ctx context.Context, username, password string) error {
-	receiver := NewReceiver(&a.c.Reader)
-	defer receiver.Close()
-	responder := NewResponder(receiver, &a.c.Writer)
-
 	cck := cckGen(32)
 
 	login1Req := Login1Request{
@@ -30,7 +26,7 @@ func (a *Auth) Login(ctx context.Context, username, password string) error {
 		ClientChallengeKey: cck,
 	}
 
-	resp, err := responder.SendWithResponse(
+	resp, err := a.c.Send(
 		ctx,
 		login1Req,
 		ResponseWithMessageSubject(SubjectLogin1),
@@ -81,7 +77,7 @@ func (a *Auth) Login(ctx context.Context, username, password string) error {
 		ChallengeDigest: hex.EncodeToString(challengeDigest.Sum(nil)),
 	}
 
-	_, err = responder.SendWithResponse(
+	_, err = a.c.Send(
 		ctx,
 		login2Req,
 		ResponseWithMessageSubject(SubjectConnected),
