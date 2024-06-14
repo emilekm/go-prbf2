@@ -48,3 +48,7 @@ const (
 	CommandAPIAdmin            Command = "apiadmin"
 	CommandServerDetailsAlways Command = "serverdetailsalways"
 )
+
+type ServerVersion string
+
+const ServerVersion1 ServerVersion = "1"

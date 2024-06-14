@@ -15,13 +15,12 @@ func NewWriter(w *bufio.Writer) *Writer {
 	return &Writer{W: w}
 }
 
-func (w *Writer) WriteMessage(msg Message) error {
-	rawMsg, err := EncodeMessage(msg)
-	if err != nil {
+func (w *Writer) WriteMessageBytes(msg []byte) error {
+	if _, err := w.W.Write(msg); err != nil {
 		return err
 	}
 
-	return w.WriteRawMessage(rawMsg)
+	return w.W.Flush()
 }
 
 type errWriter struct {
@@ -36,16 +35,16 @@ func (ew *errWriter) write(buf []byte) {
 	_, ew.err = ew.w.Write(buf)
 }
 
-func (w *Writer) WriteRawMessage(rawMessage *RawMessage) error {
+func (w *Writer) WriteMessage(msg Message) error {
 	ew := &errWriter{w: w.W}
 
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
 	ew.write(SeparatorStart)
-	ew.write(stringToBytes(string(rawMessage.Subject())))
+	ew.write(stringToBytes(string(msg.Subject())))
 	ew.write(SeparatorSubject)
-	ew.write(rawMessage.Content())
+	ew.write(msg.Content())
 	ew.write(SeparatorEnd)
 	ew.write(SeparatorNull)
 

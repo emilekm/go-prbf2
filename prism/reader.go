@@ -30,11 +30,11 @@ func decodeData(data []byte) (*RawMessage, error) {
 		return nil, errors.New("missing subject separator")
 	}
 
-	return NewRawMessage(Subject(subject), content), nil
+	return &RawMessage{Subject(subject), content}, nil
 }
 
 func (r *Reader) ReadMessage() (*RawMessage, error) {
-	buf, err := r.readMessageBytes()
+	buf, err := r.ReadMessageBytes()
 	if err != nil {
 		return nil, err
 	}
@@ -42,6 +42,6 @@ func (r *Reader) ReadMessage() (*RawMessage, error) {
 	return decodeData(buf)
 }
 
-func (r *Reader) readMessageBytes() ([]byte, error) {
+func (r *Reader) ReadMessageBytes() ([]byte, error) {
 	return r.R.ReadBytes(SeparatorNull1)
 }

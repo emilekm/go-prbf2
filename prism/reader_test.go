@@ -14,9 +14,9 @@ func TestReader(t *testing.T) {
 	bufReader := bufio.NewReader(buf)
 
 	r := NewReader(bufReader)
-	rawMsg, err := r.ReadMessage()
+	msg, err := r.ReadMessage()
 	require.NoError(t, err)
 
-	assert.Equal(t, Subject("login1"), rawMsg.Subject())
-	assert.Equal(t, []byte("test"), rawMsg.Content())
+	assert.Equal(t, Subject("login1"), msg.subject)
+	assert.Equal(t, []byte("test"), msg.content)
 }

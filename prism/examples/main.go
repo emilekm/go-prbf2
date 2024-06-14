@@ -27,10 +27,5 @@ func run() error {
 		return err
 	}
 
-	err = client.Auth.Login(ctx, username, password)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return client.Login(ctx, username, password)
 }

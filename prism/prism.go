@@ -7,37 +7,40 @@ import (
 	"net/textproto"
 )
 
-type Client struct {
-	Receiver
-	Responder
-	Auth *Auth
+type Message interface {
+	Subject() Subject
+	Content() []byte
+}
 
-	conn     io.ReadWriteCloser
-	reader   *Reader
-	writer   *Writer
-	pipeline *textproto.Pipeline
+type RawMessage struct {
+	subject Subject
+	content []byte
+}
+
+func (m RawMessage) Subject() Subject {
+	return m.subject
+}
+
+func (m RawMessage) Content() []byte {
+	return m.content
+}
+
+type Client struct {
+	textproto.Pipeline
+	Reader
+	Writer
+
+	conn io.ReadWriteCloser
 }
 
 func NewClient(conn io.ReadWriteCloser) *Client {
-	pipeline := &textproto.Pipeline{}
-	reader := &Reader{R: bufio.NewReader(conn)}
-	writer := &Writer{W: bufio.NewWriter(conn)}
 
-	receiver := NewReceiver(reader)
-
-	c := &Client{
-		Receiver:  *receiver,
-		Responder: *NewResponder(receiver, writer, pipeline),
-
+	return &Client{
+		Pipeline: textproto.Pipeline{},
+		Reader:   Reader{R: bufio.NewReader(conn)},
+		Writer:   Writer{W: bufio.NewWriter(conn)},
 		conn:     conn,
-		reader:   reader,
-		writer:   writer,
-		pipeline: pipeline,
 	}
-
-	c.Auth = NewAuth(c)
-
-	return c
 }
 
 func Dial(addrS string) (*Client, error) {

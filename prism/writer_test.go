@@ -13,7 +13,10 @@ func TestWriter(t *testing.T) {
 	bufWriter := bufio.NewWriter(buf)
 
 	w := NewWriter(bufWriter)
-	w.WriteRawMessage(&RawMessage{SubjectLogin1, []byte("test")})
+	w.WriteMessage(RawMessage{
+		subject: SubjectLogin1,
+		content: []byte("test"),
+	})
 
 	assert.Equal(t, buf.String(), "\x01login1\x02test\x04\x00")
 }
