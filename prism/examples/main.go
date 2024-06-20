@@ -33,5 +33,13 @@ func run() error {
 	}
 
 	println("Logged in")
+
+	details, err := client.ServerDetails(ctx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Server details: %+v\n", details)
+
 	return nil
 }

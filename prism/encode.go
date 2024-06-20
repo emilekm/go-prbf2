@@ -46,6 +46,9 @@ func marshalFields(val reflect.Value) ([][]byte, error) {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		fieldValueUint64 := val.Uint()
 		fields = append(fields, stringToBytes(strconv.Itoa(int(fieldValueUint64))))
+	case reflect.Float32, reflect.Float64:
+		fieldValueFloat64 := val.Float()
+		fields = append(fields, stringToBytes(strconv.FormatFloat(fieldValueFloat64, 'f', -1, 64)))
 	case reflect.String:
 		fieldValueString := val.String()
 		fields = append(fields, stringToBytes(fieldValueString))

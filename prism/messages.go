@@ -51,7 +51,7 @@ type ChatMessage struct {
 type ChatMessages []ChatMessage
 
 func (m *ChatMessages) UnmarshalMessage(content []byte) error {
-	chats, err := multipleMessages[ChatMessage](content)
+	chats, err := multipartBody[ChatMessage](content)
 	if err != nil {
 		return err
 	}
@@ -71,12 +71,80 @@ type KillMessage struct {
 type KillMessages []KillMessage
 
 func (m *KillMessages) UnmarshalMessage(content []byte) error {
-	kills, err := multipleMessages[KillMessage](content)
+	kills, err := multipartBody[KillMessage](content)
 	if err != nil {
 		return err
 	}
 
 	*m = kills
+	return nil
+}
+
+type Map struct {
+	Name  string
+	Mode  string
+	Layer string
+}
+
+type ServerDetails struct {
+	Name        string
+	IP          string
+	Port        string
+	StartTime   float64
+	RoundWarmup int
+	RoundLength int
+	MaxPlayers  int
+
+	Status         string
+	Map            Map
+	RoundStartTime float64
+	Players        int
+	Team1          string
+	Team2          string
+	Tickets1       int
+	Tickets2       int
+	// RCONUsers []string // Custom Unmarshaling needed
+}
+
+// Player returned with `listplayers` message
+type Player struct {
+	// Header
+	Name          string
+	IsAIPlayer    int
+	Hash          string
+	IP            string
+	ProfileID     string
+	Index         int
+	JoinTimestamp int
+
+	// Details
+	Team          int
+	Squad         string
+	Kit           string
+	Vehicle       string
+	Score         int
+	ScoreTeamwork int
+	Kills         int
+	Teamkills     int
+	Deaths        int
+	Valid         int // ???
+	Ping          int
+	Idle          int
+	Alive         int
+	Joining       int
+	Position      string
+	Rotation      string
+}
+
+type Players []Player
+
+func (p *Players) UnmarshalMessage(content []byte) error {
+	players, err := multipartBody[Player](content)
+	if err != nil {
+		return err
+	}
+
+	*p = players
 	return nil
 }
 
@@ -90,7 +158,7 @@ type User struct {
 type Users []User
 
 func (u *Users) UnmarshalMessage(content []byte) error {
-	users, err := multipleMessages[User](content)
+	users, err := multipartBody[User](content)
 	if err != nil {
 		return err
 	}
@@ -120,7 +188,7 @@ func (_ ChangeUser) Subject() Subject {
 	return CommandChangeUser
 }
 
-func multipleMessages[T any](content []byte) ([]T, error) {
+func multipartBody[T any](content []byte) ([]T, error) {
 	messages := bytes.Split(content, SeparatorBuffer)
 
 	var result []T

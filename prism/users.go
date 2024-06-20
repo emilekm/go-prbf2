@@ -8,13 +8,7 @@ func (c *Client) ListUsers(ctx context.Context) (Users, error) {
 		return nil, err
 	}
 
-	var users Users
-	err = UnmarshalMessage(rawMsg.Body(), &users)
-	if err != nil {
-		return nil, err
-	}
-
-	return users, nil
+	return usersList(rawMsg)
 }
 
 func (c *Client) AddUser(ctx context.Context, newUser AddUser) (Users, error) {
@@ -46,6 +40,10 @@ func (c *Client) DeleteUser(ctx context.Context, name string) (Users, error) {
 
 func usersList(rawMsg *RawMessage) (Users, error) {
 	var users Users
+	if len(rawMsg.Body()) == 0 {
+		return users, nil
+	}
+
 	err := UnmarshalMessage(rawMsg.Body(), &users)
 	if err != nil {
 		return nil, err

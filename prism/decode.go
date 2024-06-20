@@ -55,6 +55,16 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 			return err
 		}
 		val.SetUint(fieldValueUint64)
+	case reflect.Float32, reflect.Float64:
+		fieldValue, err := fieldValueFromScanner(fields)
+		if err != nil {
+			return err
+		}
+		fieldValueFloat64, err := strconv.ParseFloat(fieldValue, 64)
+		if err != nil {
+			return err
+		}
+		val.SetFloat(fieldValueFloat64)
 	case reflect.String:
 		fieldValue, err := fieldValueFromScanner(fields)
 		if err != nil {
