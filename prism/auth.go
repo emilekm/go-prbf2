@@ -17,6 +17,9 @@ func (c *Client) Login(ctx context.Context, username, password string) error {
 		Username:           username,
 		ClientChallengeKey: cck,
 	}, SubjectLogin1)
+	if err != nil {
+		return fmt.Errorf("login1: %w", err)
+	}
 
 	var login1Response Login1Response
 	err = UnmarshalMessage(resp.Body(), &login1Response)
@@ -35,7 +38,7 @@ func (c *Client) Login(ctx context.Context, username, password string) error {
 		return fmt.Errorf("login2: challengedigest: %w", err)
 	}
 
-	resp, err = c.Command(ctx, CommandLogin2, &Login2Request{
+	_, err = c.Command(ctx, CommandLogin2, &Login2Request{
 		ChallengeDigest: challengeDigestHash,
 	}, SubjectConnected)
 	if err != nil {
