@@ -1,37 +1,30 @@
-package messages
+package prism
 
 import (
 	"bytes"
-
-	"github.com/emilekm/go-prbf2/prism"
 )
 
-type baseMessage struct{}
-
 type Login1Request struct {
-	baseMessage
-	ServerVersion      prism.ServerVersion
+	ServerVersion      ServerVersion
 	Username           string
 	ClientChallengeKey []byte
 }
 
-func (l Login1Request) Subject() prism.Subject {
-	return prism.SubjectLogin1
+func (l Login1Request) Subject() Subject {
+	return SubjectLogin1
 }
 
 type Login1Response struct {
-	baseMessage
 	Hash            []byte
 	ServerChallenge []byte
 }
 
 type Login2Request struct {
-	baseMessage
 	ChallengeDigest string
 }
 
-func (l Login2Request) Subject() prism.Subject {
-	return prism.SubjectLogin2
+func (l Login2Request) Subject() Subject {
+	return SubjectLogin2
 }
 
 type ChatMessageType int
@@ -48,7 +41,6 @@ const (
 )
 
 type ChatMessage struct {
-	baseMessage
 	Type       ChatMessageType
 	Timestamp  int
 	Channel    string
@@ -58,12 +50,12 @@ type ChatMessage struct {
 
 type ChatMessages []ChatMessage
 
-func (m *ChatMessages) Decode(content []byte) error {
-	messages := bytes.Split(content, prism.SeparatorBuffer)
+func (m *ChatMessages) UnmarshalMessage(content []byte) error {
+	messages := bytes.Split(content, SeparatorBuffer)
 
 	for _, message := range messages {
 		var msg ChatMessage
-		err := msg.Decode(message)
+		err := UnmarshalMessage(message, &msg)
 		if err != nil {
 			return err
 		}
@@ -75,7 +67,6 @@ func (m *ChatMessages) Decode(content []byte) error {
 }
 
 type KillMessage struct {
-	baseMessage
 	IsTeamKill   bool
 	Timestamp    int
 	AttackerName string
@@ -85,12 +76,12 @@ type KillMessage struct {
 
 type KillMessages []KillMessage
 
-func (m *KillMessages) Decode(content []byte) error {
-	messages := bytes.Split(content, prism.SeparatorBuffer)
+func (m *KillMessages) UnmarshalMessage(content []byte) error {
+	messages := bytes.Split(content, SeparatorBuffer)
 
 	for _, message := range messages {
 		var msg KillMessage
-		err := msg.Decode(message)
+		err := UnmarshalMessage(message, &msg)
 		if err != nil {
 			return err
 		}

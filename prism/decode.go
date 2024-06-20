@@ -1,4 +1,4 @@
-package messages
+package prism
 
 import (
 	"bufio"
@@ -6,38 +6,32 @@ import (
 	"errors"
 	"reflect"
 	"strconv"
-
-	"github.com/emilekm/go-prbf2/prism"
 )
 
-type ContentDecoder interface {
-	Decode(content []byte) error
+type Unmarshaler interface {
+	UnmarshalMessage([]byte) error
 }
 
-func (m *baseMessage) Decode(content []byte) error {
-	return decodeContent(content, m)
-}
-
-func DecodeContent(content []byte, into any) error {
-	if decoder, ok := into.(ContentDecoder); ok {
-		return decoder.Decode(content)
+func UnmarshalMessage(content []byte, v any) error {
+	if u, ok := v.(Unmarshaler); ok {
+		return u.UnmarshalMessage(content)
 	}
 
-	return decodeContent(content, into)
+	return unmarshalMessage(content, v)
 }
 
-func decodeContent(content []byte, into any) error {
-	val := reflect.Indirect(reflect.ValueOf(into))
+func unmarshalMessage(content []byte, v any) error {
+	val := reflect.Indirect(reflect.ValueOf(v))
 
 	fieldsScanner := bufio.NewScanner(bytes.NewReader(content))
 	fieldsScanner.Split(splitFieldsFunc)
 
-	return decode(val, fieldsScanner)
+	return unmarshalFields(val, fieldsScanner)
 }
 
 var errFieldCount = errors.New("field count mismatch")
 
-func decode(val reflect.Value, fields *bufio.Scanner) error {
+func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 	switch val.Kind() {
 	case reflect.Bool:
 		return errors.New("bool not supported")
@@ -79,7 +73,7 @@ func decode(val reflect.Value, fields *bufio.Scanner) error {
 		for {
 			// add empty element to the slice
 			newElem := reflect.New(val.Type().Elem()).Elem()
-			err := decode(newElem, fields)
+			err := unmarshalFields(newElem, fields)
 			if err != nil {
 				if err == errFieldCount {
 					return nil
@@ -90,14 +84,14 @@ func decode(val reflect.Value, fields *bufio.Scanner) error {
 		}
 	case reflect.Array:
 		for i := 0; i < val.Len(); i += 1 {
-			err := decode(val.Index(i), fields)
+			err := unmarshalFields(val.Index(i), fields)
 			if err != nil {
 				return err
 			}
 		}
 	case reflect.Struct:
 		for i := 0; i < val.NumField(); i += 1 {
-			err := decode(val.Field(i), fields)
+			err := unmarshalFields(val.Field(i), fields)
 			if err != nil {
 				return err
 			}
@@ -106,7 +100,7 @@ func decode(val reflect.Value, fields *bufio.Scanner) error {
 		unwrapped := val.Elem()
 		if !unwrapped.IsValid() {
 			newUnwrapped := reflect.New(val.Type().Elem())
-			err := decode(newUnwrapped, fields)
+			err := unmarshalFields(newUnwrapped, fields)
 			if err != nil {
 				return err
 			}
@@ -115,7 +109,7 @@ func decode(val reflect.Value, fields *bufio.Scanner) error {
 			return nil
 		}
 
-		err := decode(unwrapped, fields)
+		err := unmarshalFields(unwrapped, fields)
 		if err != nil {
 			return err
 		}
@@ -125,7 +119,7 @@ func decode(val reflect.Value, fields *bufio.Scanner) error {
 }
 
 func splitFieldsFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if i := bytes.IndexByte(data, prism.SeparatorField[0]); i >= 0 {
+	if i := bytes.IndexByte(data, SeparatorField[0]); i >= 0 {
 		return i + 1, data[0:i], nil
 	}
 

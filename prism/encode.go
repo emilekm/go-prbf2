@@ -1,36 +1,40 @@
-package messages
+package prism
 
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
-	"unsafe"
-
-	"github.com/emilekm/go-prbf2/prism"
 )
 
-func (m baseMessage) Content() []byte {
-	content, err := EncodeContent(m)
-	if err != nil {
-		panic(err)
-	}
-
-	return content
+type Marshaler interface {
+	MarshalMessage() ([]byte, error)
 }
 
-func EncodeContent(msg any) ([]byte, error) {
-	val := reflect.ValueOf(msg)
+func MarshalMessage(v any) ([]byte, error) {
+	if m, ok := v.(Marshaler); ok {
+		return m.MarshalMessage()
+	}
 
-	fields, err := encode(val)
+	return marshalMessage(v)
+}
+
+func marshalMessage(v any) ([]byte, error) {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Pointer || rv.IsNil() {
+		return nil, fmt.Errorf("expected pointer, received invalid type %T", v)
+	}
+
+	fields, err := marshalFields(rv)
 	if err != nil {
 		return nil, err
 	}
 
-	return bytes.Join(fields, prism.SeparatorField), nil
+	return bytes.Join(fields, SeparatorField), nil
 }
 
-func encode(val reflect.Value) ([][]byte, error) {
+func marshalFields(val reflect.Value) ([][]byte, error) {
 	var fields [][]byte
 
 	switch val.Kind() {
@@ -50,7 +54,7 @@ func encode(val reflect.Value) ([][]byte, error) {
 			fields = append(fields, val.Bytes())
 		} else {
 			for i := 0; i < val.Len(); i += 1 {
-				newFields, err := encode(val.Index(i))
+				newFields, err := marshalFields(val.Index(i))
 				if err != nil {
 					return nil, err
 				}
@@ -61,7 +65,7 @@ func encode(val reflect.Value) ([][]byte, error) {
 	case reflect.Struct:
 		for i := 0; i < val.NumField(); i += 1 {
 			field := val.Field(i)
-			nestedFields, err := encode(field)
+			nestedFields, err := marshalFields(field)
 			if err != nil {
 				return nil, err
 			}
@@ -72,7 +76,7 @@ func encode(val reflect.Value) ([][]byte, error) {
 		unwrapped := val.Elem()
 
 		if unwrapped.IsValid() {
-			nestedFields, err := encode(unwrapped)
+			nestedFields, err := marshalFields(unwrapped)
 			if err != nil {
 				return nil, err
 			}
@@ -82,10 +86,4 @@ func encode(val reflect.Value) ([][]byte, error) {
 	}
 
 	return fields, nil
-}
-
-func stringToBytes(s string) []byte {
-	p := unsafe.StringData(s)
-	b := unsafe.Slice(p, len(s))
-	return b
 }

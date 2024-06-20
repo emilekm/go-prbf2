@@ -18,5 +18,5 @@ func TestReader(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, Subject("login1"), msg.subject)
-	assert.Equal(t, []byte("test"), msg.content)
+	assert.Equal(t, []byte("test"), msg.body)
 }

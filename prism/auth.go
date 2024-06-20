@@ -13,27 +13,24 @@ import (
 func (c *Client) Login(ctx context.Context, username, password string) error {
 	cck := cckGen(32)
 
-	login1Content := bytes.Join([][]byte{
-		[]byte(ServerVersion1),
-		[]byte(username),
-		[]byte(cck),
-	}, SeparatorField)
+	login1Request := Login1Request{
+		ServerVersion:      ServerVersion1,
+		Username:           username,
+		ClientChallengeKey: cck,
+	}
 
 	id := c.Next()
 	c.StartRequest(id)
 	c.StartResponse(id)
 
-	err := c.WriteMessage(&RawMessage{
-		subject: SubjectLogin1,
-		content: login1Content,
-	})
+	err := c.WriteMessage(&login1Request)
 	c.EndRequest(id)
 	if err != nil {
 		c.EndResponse(id)
 		return fmt.Errorf("login1: %w", err)
 	}
 
-	login1Resp, err := c.waitForMessage(ctx, SubjectLogin1)
+	resp, err := c.waitForMessage(ctx, SubjectLogin1)
 	if err != nil {
 		c.EndResponse(id)
 		return fmt.Errorf("login1: %w", err)
@@ -41,16 +38,18 @@ func (c *Client) Login(ctx context.Context, username, password string) error {
 
 	c.EndResponse(id)
 
-	login1RespParts := bytes.SplitN(login1Resp.Content(), SeparatorField, 2)
-	hash := login1RespParts[0]
-	serverChallenge := login1RespParts[1]
+	var login1Response Login1Response
+	err = UnmarshalMessage(resp.Body(), &login1Response)
+	if err != nil {
+		return fmt.Errorf("login1: %w", err)
+	}
 
 	challengeDigestHash, err := prepareChallengeDigest(
 		username,
 		password,
-		hash,
+		login1Response.Hash,
 		cck,
-		serverChallenge,
+		login1Response.ServerChallenge,
 	)
 	if err != nil {
 		return fmt.Errorf("login1: challengedigest: %w", err)
@@ -60,9 +59,8 @@ func (c *Client) Login(ctx context.Context, username, password string) error {
 	c.StartRequest(id)
 	c.StartResponse(id)
 
-	err = c.WriteMessage(&RawMessage{
-		subject: SubjectLogin2,
-		content: []byte(challengeDigestHash),
+	err = c.WriteMessage(&Login2Request{
+		ChallengeDigest: challengeDigestHash,
 	})
 	c.EndRequest(id)
 	if err != nil {
@@ -91,7 +89,12 @@ func (c *Client) waitForMessage(ctx context.Context, expected Subject) (*RawMess
 			}
 
 			if slices.Contains(errorSubjects, msg.Subject()) {
-				return nil, ErrorMessageToError(msg)
+				var errMsg Error
+				err := UnmarshalMessage(msg.Body(), &errMsg)
+				if err != nil {
+					return nil, err
+				}
+				return nil, errMsg
 			}
 
 			if msg.Subject() == expected {

@@ -9,20 +9,35 @@ import (
 
 type Message interface {
 	Subject() Subject
-	Content() []byte
 }
 
 type RawMessage struct {
 	subject Subject
-	content []byte
+	body    []byte
+}
+
+func NewRawMessage(subject Subject, content []byte) *RawMessage {
+	return &RawMessage{
+		subject: subject,
+		body:    content,
+	}
 }
 
 func (m RawMessage) Subject() Subject {
 	return m.subject
 }
 
-func (m RawMessage) Content() []byte {
-	return m.content
+func (m RawMessage) Body() []byte {
+	return m.body
+}
+
+func (m RawMessage) MarshalMessage() ([]byte, error) {
+	return m.body, nil
+}
+
+func (m *RawMessage) UnmarshalMessage(content []byte) error {
+	m.body = content[:]
+	return nil
 }
 
 type Client struct {
@@ -34,7 +49,6 @@ type Client struct {
 }
 
 func NewClient(conn io.ReadWriteCloser) *Client {
-
 	return &Client{
 		Pipeline: textproto.Pipeline{},
 		Reader:   Reader{R: bufio.NewReader(conn)},

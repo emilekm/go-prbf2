@@ -27,5 +27,11 @@ func run() error {
 		return err
 	}
 
-	return client.Login(ctx, username, password)
+	err = client.Login(ctx, username, password)
+	if err != nil {
+		return err
+	}
+
+	println("Logged in")
+	return nil
 }

@@ -36,6 +36,11 @@ func (ew *errWriter) write(buf []byte) {
 }
 
 func (w *Writer) WriteMessage(msg Message) error {
+	content, err := MarshalMessage(msg)
+	if err != nil {
+		return err
+	}
+
 	ew := &errWriter{w: w.W}
 
 	w.mutex.Lock()
@@ -44,7 +49,7 @@ func (w *Writer) WriteMessage(msg Message) error {
 	ew.write(SeparatorStart)
 	ew.write(stringToBytes(string(msg.Subject())))
 	ew.write(SeparatorSubject)
-	ew.write(msg.Content())
+	ew.write(content)
 	ew.write(SeparatorEnd)
 	ew.write(SeparatorNull)
 

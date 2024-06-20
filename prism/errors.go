@@ -1,9 +1,7 @@
 package prism
 
 import (
-	"bytes"
 	"fmt"
-	"strconv"
 )
 
 type ErrorCode int
@@ -30,34 +28,6 @@ type Error struct {
 	Details string
 }
 
-func (e Error) Subject() Subject {
-	return SubjectError
-}
-
 func (e Error) Error() string {
 	return fmt.Sprintf("Code: %d, Details: %s", e.Code, e.Details)
-}
-
-var (
-	ErrUnknown = Error{
-		Code: ErrorCodeUnknown,
-	}
-)
-
-func ErrorMessageToError(msg Message) error {
-	parts := bytes.SplitN(msg.Content(), SeparatorField, 2)
-
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid error message: %s", msg.Content())
-	}
-
-	code, err := strconv.Atoi(string(parts[0]))
-	if err != nil {
-		return fmt.Errorf("invalid error message: %s", msg.Content())
-	}
-
-	return Error{
-		Code:    ErrorCode(code),
-		Details: string(parts[1]),
-	}
 }

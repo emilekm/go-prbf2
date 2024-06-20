@@ -15,7 +15,7 @@ func TestWriter(t *testing.T) {
 	w := NewWriter(bufWriter)
 	w.WriteMessage(RawMessage{
 		subject: SubjectLogin1,
-		content: []byte("test"),
+		body:    []byte("test"),
 	})
 
 	assert.Equal(t, buf.String(), "\x01login1\x02test\x04\x00")
