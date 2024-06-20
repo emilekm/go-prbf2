@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/textproto"
+	"slices"
 )
 
 type Message interface {
@@ -104,4 +105,31 @@ func (c *Client) Command(ctx context.Context, cmd Command, payload any, success 
 	}
 
 	return msg, nil
+}
+
+func (c *Client) waitForMessage(ctx context.Context, expected Subject) (*RawMessage, error) {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+			msg, err := c.ReadMessage()
+			if err != nil {
+				return nil, err
+			}
+
+			if slices.Contains(errorSubjects, msg.Subject()) {
+				var errMsg Error
+				err := UnmarshalMessage(msg.Body(), &errMsg)
+				if err != nil {
+					return nil, err
+				}
+				return nil, errMsg
+			}
+
+			if msg.Subject() == expected {
+				return msg, nil
+			}
+		}
+	}
 }

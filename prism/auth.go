@@ -7,36 +7,16 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/rand"
-	"slices"
 )
 
 func (c *Client) Login(ctx context.Context, username, password string) error {
 	cck := cckGen(32)
 
-	login1Request := Login1Request{
+	resp, err := c.Command(ctx, CommandLogin1, &Login1Request{
 		ServerVersion:      ServerVersion1,
 		Username:           username,
 		ClientChallengeKey: cck,
-	}
-
-	id := c.Next()
-	c.StartRequest(id)
-	c.StartResponse(id)
-
-	err := c.WriteMessage(&login1Request)
-	c.EndRequest(id)
-	if err != nil {
-		c.EndResponse(id)
-		return fmt.Errorf("login1: %w", err)
-	}
-
-	resp, err := c.waitForMessage(ctx, SubjectLogin1)
-	if err != nil {
-		c.EndResponse(id)
-		return fmt.Errorf("login1: %w", err)
-	}
-
-	c.EndResponse(id)
+	}, SubjectLogin1)
 
 	var login1Response Login1Response
 	err = UnmarshalMessage(resp.Body(), &login1Response)
@@ -52,56 +32,17 @@ func (c *Client) Login(ctx context.Context, username, password string) error {
 		login1Response.ServerChallenge,
 	)
 	if err != nil {
-		return fmt.Errorf("login1: challengedigest: %w", err)
+		return fmt.Errorf("login2: challengedigest: %w", err)
 	}
 
-	id = c.Next()
-	c.StartRequest(id)
-	c.StartResponse(id)
-
-	err = c.WriteMessage(&Login2Request{
+	resp, err = c.Command(ctx, CommandLogin2, &Login2Request{
 		ChallengeDigest: challengeDigestHash,
-	})
-	c.EndRequest(id)
-	if err != nil {
-		c.EndResponse(id)
-		return fmt.Errorf("login2: %w", err)
-	}
-
-	_, err = c.waitForMessage(ctx, SubjectConnected)
-	c.EndResponse(id)
+	}, SubjectConnected)
 	if err != nil {
 		return fmt.Errorf("login2: %w", err)
 	}
 
 	return nil
-}
-
-func (c *Client) waitForMessage(ctx context.Context, expected Subject) (*RawMessage, error) {
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			msg, err := c.ReadMessage()
-			if err != nil {
-				return nil, err
-			}
-
-			if slices.Contains(errorSubjects, msg.Subject()) {
-				var errMsg Error
-				err := UnmarshalMessage(msg.Body(), &errMsg)
-				if err != nil {
-					return nil, err
-				}
-				return nil, errMsg
-			}
-
-			if msg.Subject() == expected {
-				return msg, nil
-			}
-		}
-	}
 }
 
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
