@@ -11,7 +11,7 @@ type Login1Request struct {
 }
 
 func (l Login1Request) Subject() Subject {
-	return SubjectLogin1
+	return CommandLogin1
 }
 
 type Login1Response struct {
@@ -24,7 +24,7 @@ type Login2Request struct {
 }
 
 func (l Login2Request) Subject() Subject {
-	return SubjectLogin2
+	return CommandLogin2
 }
 
 type ChatMessageType int
@@ -51,18 +51,12 @@ type ChatMessage struct {
 type ChatMessages []ChatMessage
 
 func (m *ChatMessages) UnmarshalMessage(content []byte) error {
-	messages := bytes.Split(content, SeparatorBuffer)
-
-	for _, message := range messages {
-		var msg ChatMessage
-		err := UnmarshalMessage(message, &msg)
-		if err != nil {
-			return err
-		}
-
-		*m = append(*m, msg)
+	chats, err := multipleMessages[ChatMessage](content)
+	if err != nil {
+		return err
 	}
 
+	*m = chats
 	return nil
 }
 
@@ -77,17 +71,68 @@ type KillMessage struct {
 type KillMessages []KillMessage
 
 func (m *KillMessages) UnmarshalMessage(content []byte) error {
-	messages := bytes.Split(content, SeparatorBuffer)
-
-	for _, message := range messages {
-		var msg KillMessage
-		err := UnmarshalMessage(message, &msg)
-		if err != nil {
-			return err
-		}
-
-		*m = append(*m, msg)
+	kills, err := multipleMessages[KillMessage](content)
+	if err != nil {
+		return err
 	}
 
+	*m = kills
 	return nil
+}
+
+// User returned with `getusers` message
+type User struct {
+	Name  string
+	Power int
+}
+
+// List of users returned with `getusers` message
+type Users []User
+
+func (u *Users) UnmarshalMessage(content []byte) error {
+	users, err := multipleMessages[User](content)
+	if err != nil {
+		return err
+	}
+
+	*u = users
+	return nil
+}
+
+type AddUser struct {
+	Name     string
+	Password string
+	Power    int
+}
+
+func (_ AddUser) Subject() Subject {
+	return CommandAddUser
+}
+
+type ChangeUser struct {
+	Name        string
+	NewName     string
+	NewPassword string
+	NewPower    int
+}
+
+func (_ ChangeUser) Subject() Subject {
+	return CommandChangeUser
+}
+
+func multipleMessages[T any](content []byte) ([]T, error) {
+	messages := bytes.Split(content, SeparatorBuffer)
+
+	var result []T
+	for _, message := range messages {
+		var msg T
+		err := UnmarshalMessage(message, &msg)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, msg)
+	}
+
+	return result, nil
 }

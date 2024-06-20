@@ -14,11 +14,11 @@ var (
 	SeparatorBuffer  = []byte{0x0A}
 )
 
+// Incoming message subject
 type Subject string
 
 const (
 	SubjectLogin1              Subject = "login1"
-	SubjectLogin2              Subject = "login2"
 	SubjectConnected           Subject = "connected"
 	SubjectServerDetails       Subject = "serverdetails"
 	SubjectUpdateServerDetails Subject = "updateserverdetails"
@@ -38,9 +38,12 @@ const (
 	SubjectRACommand           Subject = "say"
 )
 
-type Command string
+// Command is the outgoing subject
+type Command = Subject
 
 const (
+	CommandLogin1              Command = "login1"
+	CommandLogin2              Command = "login2"
 	CommandGetUsers            Command = "getusers"
 	CommandAddUser             Command = "adduser"
 	CommandChangeUser          Command = "changeuser"
