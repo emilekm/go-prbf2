@@ -2,10 +2,7 @@ module github.com/emilekm/go-prbf2
 
 go 1.22
 
-require (
-	github.com/ghostiam/binstruct v1.3.2
-	golang.org/x/sync v0.7.0
-)
+require github.com/ghostiam/binstruct v1.3.2
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
