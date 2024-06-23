@@ -86,6 +86,9 @@ type Map struct {
 	Layer string
 }
 
+// Subjects:
+// - serverdetails
+// - updateserverdetails
 type ServerDetails struct {
 	Name        string
 	IP          string
@@ -103,21 +106,12 @@ type ServerDetails struct {
 	Team2          string
 	Tickets1       int
 	Tickets2       int
-	// RCONUsers []string // Custom Unmarshaling needed
+	// []string separated by SeparatorBuffer
+	// Currently impossible to unmarshal this field
+	ConnectedUsers string
 }
 
-// Player returned with `listplayers` message
-type Player struct {
-	// Header
-	Name          string
-	IsAIPlayer    int
-	Hash          string
-	IP            string
-	ProfileID     string
-	Index         int
-	JoinTimestamp int
-
-	// Details
+type PlayerDetails struct {
 	Team          int
 	Squad         string
 	Kit           string
@@ -136,6 +130,20 @@ type Player struct {
 	Rotation      string
 }
 
+// Player returned with `listplayers` message
+type Player struct {
+	Name          string
+	IsAIPlayer    int
+	Hash          string
+	IP            string
+	ProfileID     string
+	Index         int
+	JoinTimestamp int
+	PlayerDetails
+}
+
+// Subjects:
+// - listplayers
 type Players []Player
 
 func (p *Players) UnmarshalMessage(content []byte) error {
@@ -146,6 +154,15 @@ func (p *Players) UnmarshalMessage(content []byte) error {
 
 	*p = players
 	return nil
+}
+
+// Subjects:
+// - updateplayers
+// NOTE: some players in `updateplayers` might have body of Player instead of UpdatePlayer
+type UpdatePlayer struct {
+	Name  string
+	Index int
+	PlayerDetails
 }
 
 // User returned with `getusers` message

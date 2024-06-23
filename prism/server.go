@@ -2,6 +2,8 @@ package prism
 
 import "context"
 
+// Using `serverdetailsalways` instead of `serverdetails`
+// because the latter might not return all the fields.
 func (c *Client) ServerDetails(ctx context.Context) (*ServerDetails, error) {
 	rawMsg, err := c.Command(ctx, CommandServerDetailsAlways, nil, SubjectServerDetails)
 	if err != nil {
