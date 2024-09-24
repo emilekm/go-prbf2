@@ -4,6 +4,8 @@ import (
 	"bytes"
 )
 
+//go:generate go run golang.org/x/tools/cmd/stringer -type=Layer -linecomment -output=messages_strings.go
+
 type Login1Request struct {
 	ServerVersion      ServerVersion
 	Username           string
@@ -80,10 +82,20 @@ func (m *KillMessages) UnmarshalMessage(content []byte) error {
 	return nil
 }
 
+type Layer int
+
+const (
+	LayerUnknown     Layer = 0   // ???
+	LayerInfantry    Layer = 16  // inf
+	LayerAlternative Layer = 32  // alt
+	LayerStandard    Layer = 64  // std
+	LayerLarge       Layer = 128 // lrg
+)
+
 type Map struct {
 	Name  string
 	Mode  string
-	Layer string
+	Layer Layer
 }
 
 // Subjects:
