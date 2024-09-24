@@ -47,16 +47,22 @@ type Client struct {
 	Reader
 	Writer
 
+	Users *Users
+
 	conn io.ReadWriteCloser
 }
 
 func NewClient(conn io.ReadWriteCloser) *Client {
-	return &Client{
+	c := &Client{
 		Pipeline: textproto.Pipeline{},
 		Reader:   Reader{R: bufio.NewReader(conn)},
 		Writer:   Writer{W: bufio.NewWriter(conn)},
 		conn:     conn,
 	}
+
+	c.Users = &Users{c: c}
+
+	return c
 }
 
 func Dial(addrS string) (*Client, error) {
@@ -91,7 +97,7 @@ func (c *Client) Command(ctx context.Context, cmd Command, payload any, success 
 	c.StartRequest(id)
 	c.StartResponse(id)
 
-	err := c.WriteMessage(NewRawMessage(cmd, content))
+	err := c.WriteMessage(cmd, content)
 	c.EndRequest(id)
 	if err != nil {
 		c.EndResponse(id)

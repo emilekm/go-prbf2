@@ -165,46 +165,6 @@ type UpdatePlayer struct {
 	PlayerDetails
 }
 
-// User returned with `getusers` message
-type User struct {
-	Name  string
-	Power int
-}
-
-// List of users returned with `getusers` message
-type Users []User
-
-func (u *Users) UnmarshalMessage(content []byte) error {
-	users, err := multipartBody[User](content)
-	if err != nil {
-		return err
-	}
-
-	*u = users
-	return nil
-}
-
-type AddUser struct {
-	Name     string
-	Password string
-	Power    int
-}
-
-func (_ AddUser) Subject() Subject {
-	return CommandAddUser
-}
-
-type ChangeUser struct {
-	Name        string
-	NewName     string
-	NewPassword string
-	NewPower    int
-}
-
-func (_ ChangeUser) Subject() Subject {
-	return CommandChangeUser
-}
-
 func multipartBody[T any](content []byte) ([]T, error) {
 	messages := bytes.Split(content, SeparatorBuffer)
 

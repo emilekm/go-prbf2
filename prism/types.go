@@ -29,7 +29,6 @@ const (
 	SubjectError               Subject = "error"
 	SubjectCriticalError       Subject = "errorcritical"
 	SubjectAPIAdminResult      Subject = "APIAdminResult"
-	SubjectGetUsers            Subject = "getusers"
 	SubjectListPlayers         Subject = "listplayers"
 	SubjectUpdatePlayers       Subject = "updateplayers"
 	SubjectPlayerLeave         Subject = "playerleave"
@@ -44,10 +43,6 @@ type Command = Subject
 const (
 	CommandLogin1              Command = "login1"
 	CommandLogin2              Command = "login2"
-	CommandGetUsers            Command = "getusers"
-	CommandAddUser             Command = "adduser"
-	CommandChangeUser          Command = "changeuser"
-	CommandDeleteUser          Command = "deleteuser"
 	CommandListPlayers         Command = "listplayers"
 	CommandServerDetails       Command = "serverdetails"
 	CommandGameplayDetails     Command = "gameplaydetails"
