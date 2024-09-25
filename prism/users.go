@@ -75,7 +75,7 @@ func (u *Users) Change(ctx context.Context, user ChangeUser) (UserList, error) {
 }
 
 func (u *Users) Delete(ctx context.Context, name string) (UserList, error) {
-	rawMsg, err := u.c.Command(ctx, CommandDeleteUser, name, SubjectGetUsers)
+	rawMsg, err := u.c.Command(ctx, CommandDeleteUser, &name, SubjectGetUsers)
 	if err != nil {
 		return nil, err
 	}
