@@ -129,7 +129,7 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 }
 
 func splitFieldsFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if i := bytes.IndexByte(data, SeparatorField[0]); i >= 0 {
+	if i := bytes.IndexByte(data, SeparatorField1); i >= 0 {
 		return i + 1, data[0:i], nil
 	}
 
