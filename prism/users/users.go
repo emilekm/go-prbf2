@@ -1,50 +1,17 @@
-package prism
+package users
 
-import "context"
+import (
+	"context"
 
-const (
-	SubjectGetUsers Subject = "getusers"
-
-	CommandGetUsers   Command = "getusers"
-	CommandAddUser    Command = "adduser"
-	CommandChangeUser Command = "changeuser"
-	CommandDeleteUser Command = "deleteuser"
+	"github.com/emilekm/go-prbf2/prism"
 )
 
-// User returned with `getusers` message
-type User struct {
-	Name  string
-	Power int
-}
-
-// List of users returned with `getusers` message
-type UserList []User
-
-func (u *UserList) UnmarshalMessage(content []byte) error {
-	users, err := multipartBody[User](content)
-	if err != nil {
-		return err
-	}
-
-	*u = users
-	return nil
-}
-
-type AddUser struct {
-	Name     string
-	Password string
-	Power    int
-}
-
-type ChangeUser struct {
-	Name        string
-	NewName     string
-	NewPassword string
-	NewPower    int
-}
-
 type Users struct {
-	c *Client
+	c *prism.Client
+}
+
+func New(c *prism.Client) *Users {
+	return &Users{c}
 }
 
 func (u *Users) List(ctx context.Context) (UserList, error) {
@@ -83,13 +50,13 @@ func (u *Users) Delete(ctx context.Context, name string) (UserList, error) {
 	return usersList(rawMsg)
 }
 
-func usersList(rawMsg *RawMessage) (UserList, error) {
+func usersList(rawMsg *prism.RawMessage) (UserList, error) {
 	var users UserList
 	if len(rawMsg.Body()) == 0 {
 		return users, nil
 	}
 
-	err := UnmarshalMessage(rawMsg.Body(), &users)
+	err := users.UnmarshalMessage(rawMsg.Body())
 	if err != nil {
 		return nil, err
 	}

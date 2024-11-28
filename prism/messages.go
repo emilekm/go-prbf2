@@ -53,7 +53,7 @@ type ChatMessage struct {
 type ChatMessages []ChatMessage
 
 func (m *ChatMessages) UnmarshalMessage(content []byte) error {
-	chats, err := multipartBody[ChatMessage](content)
+	chats, err := UnmarshalMultipartBody[ChatMessage](content)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ type KillMessage struct {
 type KillMessages []KillMessage
 
 func (m *KillMessages) UnmarshalMessage(content []byte) error {
-	kills, err := multipartBody[KillMessage](content)
+	kills, err := UnmarshalMultipartBody[KillMessage](content)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ type Player struct {
 type Players []Player
 
 func (p *Players) UnmarshalMessage(content []byte) error {
-	players, err := multipartBody[Player](content)
+	players, err := UnmarshalMultipartBody[Player](content)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ type UpdatePlayer struct {
 	PlayerDetails
 }
 
-func multipartBody[T any](content []byte) ([]T, error) {
+func UnmarshalMultipartBody[T any](content []byte) ([]T, error) {
 	messages := bytes.Split(content, SeparatorBuffer)
 
 	var result []T
