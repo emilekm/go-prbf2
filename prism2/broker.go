@@ -88,7 +88,7 @@ func (b *Broker) Publish(message *Message) {
 
 	timer := time.NewTimer(time.Second)
 
-	for _, sub := range append(b.subjectSubscribers[message.Subject()], b.subscribers...) {
+	publishFn := func(sub Subscriber) {
 		timer.Reset(time.Second)
 		select {
 		case sub <- message:
@@ -96,6 +96,14 @@ func (b *Broker) Publish(message *Message) {
 			fmt.Printf("Subscriber slow. Unsubscribing\n")
 			b.Unsubscribe(sub)
 		}
+	}
+
+	for _, sub := range b.subjectSubscribers[message.Subject()] {
+		publishFn(sub)
+	}
+
+	for _, sub := range b.subscribers {
+		publishFn(sub)
 	}
 }
 
