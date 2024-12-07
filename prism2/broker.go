@@ -23,16 +23,17 @@ func NewBroker() *Broker {
 }
 
 // Subscribe creates a new subscriber and adds it to the broker.
-// Pass nil subject to subscribe to all subjects.
-func (b *Broker) Subscribe(subject *Subject) Subscriber {
+func (b *Broker) Subscribe(subject Subject) Subscriber {
 	subscriber := make(Subscriber, 1)
+	b.addSubscriberWithSubject(subscriber, subject)
+	return subscriber
+}
 
-	if subject != nil {
-		b.addSubscriberWithSubject(subscriber, *subject)
-	} else {
-		b.addSubscriber(subscriber)
-	}
-
+// SubscribeAll creates a new subscriber that listens to all subjects
+// and adds it to the broker.
+func (b *Broker) SubscribeAll() Subscriber {
+	subscriber := make(Subscriber, 1)
+	b.addSubscriber(subscriber)
 	return subscriber
 }
 
@@ -80,9 +81,7 @@ func (b *Broker) Unsubscribe(subscriber Subscriber) {
 	}
 }
 
-// Publish sends a message to all subscribers.
-// If subscriber is slow to receive, it will be unsubscribed.
-func (b *Broker) Publish(message *Message) {
+func (b *Broker) publish(message *Message) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 

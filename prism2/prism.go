@@ -17,16 +17,17 @@ import (
 type Client struct {
 	Reader
 	Writer
+	Broker
 
-	pipeline textproto.Pipeline
-	conn     io.ReadWriteCloser
+	textproto.Pipeline
+	conn io.ReadWriteCloser
 }
 
 func NewClient(conn io.ReadWriteCloser) *Client {
 	return &Client{
 		Reader:   Reader{R: bufio.NewReader(conn)},
 		Writer:   Writer{W: bufio.NewWriter(conn)},
-		pipeline: textproto.Pipeline{},
+		Pipeline: textproto.Pipeline{},
 		conn:     conn,
 	}
 }
@@ -46,20 +47,7 @@ func Dial(addrS string) (*Client, error) {
 }
 
 func (c *Client) Close() error {
+	c.Broker.Close()
+
 	return c.conn.Close()
-}
-
-// Next returns the next id for a request.
-func (c *Client) Next() uint {
-	return c.pipeline.Next()
-}
-
-// StartRequest blocks until it is time to send the request with the given id.
-func (c *Client) StartRequest(id uint) {
-	c.pipeline.StartRequest(id)
-}
-
-// EndRequest notifies p that the request with the given id has been sent.
-func (c *Client) EndRequest(id uint) {
-	c.pipeline.EndRequest(id)
 }
