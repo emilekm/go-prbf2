@@ -65,7 +65,7 @@ func (b *broker) start() {
 			default:
 				msg, err := b.client.ReadMessage()
 				if err != nil {
-					slog.Error("Received error when reading message in broker: %w", err)
+					slog.Error("Received error when reading message in broker", "err", err)
 					continue
 				}
 

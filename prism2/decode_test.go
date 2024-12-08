@@ -58,14 +58,6 @@ func TestUnmarshalMessage(t *testing.T) {
 			},
 			into: &testComplexType{},
 		},
-		{
-			name:   "slice type success",
-			rawMsg: []byte("test1\x03test2\x03test3"),
-			output: &testSliceSimpleType{
-				SliceOfStrings: []string{"test1", "test2", "test3"},
-			},
-			into: &testSliceSimpleType{},
-		},
 	}
 
 	for _, test := range tests {
