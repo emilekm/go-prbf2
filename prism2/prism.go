@@ -17,19 +17,24 @@ import (
 type Client struct {
 	Reader
 	Writer
-	Broker
+
+	*broker
 
 	textproto.Pipeline
 	conn io.ReadWriteCloser
 }
 
 func NewClient(conn io.ReadWriteCloser) *Client {
-	return &Client{
+	c := &Client{
 		Reader:   Reader{R: bufio.NewReader(conn)},
 		Writer:   Writer{W: bufio.NewWriter(conn)},
 		Pipeline: textproto.Pipeline{},
 		conn:     conn,
 	}
+
+	c.broker = newBroker(c)
+
+	return c
 }
 
 func Dial(addrS string) (*Client, error) {
@@ -47,7 +52,7 @@ func Dial(addrS string) (*Client, error) {
 }
 
 func (c *Client) Close() error {
-	c.Broker.Close()
+	c.broker.Close()
 
 	return c.conn.Close()
 }

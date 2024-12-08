@@ -54,39 +54,61 @@ func New(c *Client) *Users {
 }
 
 func (u *Users) List(ctx context.Context) (UserList, error) {
-	rawMsg, err := u.c.Command(ctx, CommandGetUsers, nil, SubjectGetUsers)
+	resp, err := u.c.Send(ctx, &Request{
+		Message:         NewMessage(CommandGetUsers, nil),
+		ExpectedSubject: SubjectGetUsers,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return usersList(rawMsg)
+	return usersList(resp.Message)
 }
 
 func (u *Users) Add(ctx context.Context, newUser AddUser) (UserList, error) {
-	rawMsg, err := u.c.Command(ctx, CommandAddUser, &newUser, SubjectGetUsers)
+	payload, err := Marshal(newUser)
 	if err != nil {
 		return nil, err
 	}
 
-	return usersList(rawMsg)
+	resp, err := u.c.Send(ctx, &Request{
+		Message:         NewMessage(CommandAddUser, payload),
+		ExpectedSubject: SubjectGetUsers,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return usersList(resp.Message)
 }
 
 func (u *Users) Change(ctx context.Context, user ChangeUser) (UserList, error) {
-	rawMsg, err := u.c.Command(ctx, CommandChangeUser, &user, SubjectGetUsers)
+	payload, err := Marshal(user)
 	if err != nil {
 		return nil, err
 	}
 
-	return usersList(rawMsg)
+	resp, err := u.c.Send(ctx, &Request{
+		Message:         NewMessage(CommandChangeUser, payload),
+		ExpectedSubject: SubjectGetUsers,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return usersList(resp.Message)
 }
 
 func (u *Users) Delete(ctx context.Context, name string) (UserList, error) {
-	rawMsg, err := u.c.Send(ctx, CommandDeleteUser, &name, SubjectGetUsers)
+	resp, err := u.c.Send(ctx, &Request{
+		Message:         NewMessage(CommandDeleteUser, []byte(name)),
+		ExpectedSubject: SubjectGetUsers,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return usersList(rawMsg)
+	return usersList(resp.Message)
 }
 
 func usersList(rawMsg *Message) (UserList, error) {

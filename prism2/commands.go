@@ -10,7 +10,6 @@ type Request struct {
 
 type Response struct {
 	Message *Message
-	Err     *Error
 }
 
 func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
@@ -54,10 +53,7 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 			return nil, err
 		}
 
-		return &Response{
-			Message: message,
-			Err:     &errMsg,
-		}, nil
+		return nil, errMsg
 	case message := <-channels[SubjectError]:
 		var errMsg Error
 		err = Unmarshal(message.body, &errMsg)
@@ -65,10 +61,7 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 			return nil, err
 		}
 
-		return &Response{
-			Message: message,
-			Err:     &errMsg,
-		}, nil
+		return nil, errMsg
 	case message := <-channels[req.ExpectedSubject]:
 		return &Response{
 			Message: message,

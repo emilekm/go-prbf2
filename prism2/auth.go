@@ -66,29 +66,21 @@ func (c *Client) login1(ctx context.Context, username string, cck []byte) (*Logi
 		return nil, fmt.Errorf("login1: %w", err)
 	}
 
-	respCh := c.Send(&Request{
+	resp, err := c.Send(ctx, &Request{
 		Message:         NewMessage(CommandLogin1, login1Req),
 		ExpectedSubject: SubjectLogin1,
 	})
-
-	for {
-		select {
-		case resp := <-respCh:
-			if resp.Error != nil {
-				return nil, fmt.Errorf("login1: %w", resp.Error)
-			}
-
-			var login1Response Login1Response
-			err = Unmarshal(resp.Message.Body(), &login1Response)
-			if err != nil {
-				return nil, fmt.Errorf("login1: %w", err)
-			}
-
-			return &login1Response, nil
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
+	if err != nil {
+		return nil, fmt.Errorf("login1: %w", err)
 	}
+
+	var login1Response Login1Response
+	err = Unmarshal(resp.Message.Body(), &login1Response)
+	if err != nil {
+		return nil, fmt.Errorf("login1: %w", err)
+	}
+
+	return &login1Response, nil
 }
 
 func (c *Client) login2(ctx context.Context, challengeDigestHash string) error {
@@ -99,29 +91,21 @@ func (c *Client) login2(ctx context.Context, challengeDigestHash string) error {
 		return fmt.Errorf("login2: %w", err)
 	}
 
-	respCh := c.Send(&Request{
+	resp, err := c.Send(ctx, &Request{
 		Message:         NewMessage(CommandLogin1, login2Req),
 		ExpectedSubject: SubjectLogin1,
 	})
-
-	for {
-		select {
-		case resp := <-respCh:
-			if resp.Error != nil {
-				return fmt.Errorf("login2: %w", resp.Error)
-			}
-
-			var login1Response Login1Response
-			err = Unmarshal(resp.Message.Body(), &login1Response)
-			if err != nil {
-				return fmt.Errorf("login2: %w", err)
-			}
-
-			return nil
-		case <-ctx.Done():
-			return ctx.Err()
-		}
+	if err != nil {
+		return fmt.Errorf("login2: %w", err)
 	}
+
+	var login1Response Login1Response
+	err = Unmarshal(resp.Message.Body(), &login1Response)
+	if err != nil {
+		return fmt.Errorf("login2: %w", err)
+	}
+
+	return nil
 }
 
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
