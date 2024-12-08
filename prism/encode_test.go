@@ -31,7 +31,7 @@ func TestMarshalMessage(t *testing.T) {
 		},
 	}
 
-	body, err := prism.MarshalMessage(&msg)
+	body, err := prism.Marshal(&msg)
 	require.NoError(t, err)
 
 	assert.Equal(t, []byte("sha\x03hash\x03-123\x0312\x03123"), body)

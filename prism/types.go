@@ -18,8 +18,6 @@ var (
 type Subject string
 
 const (
-	SubjectLogin1              Subject = "login1"
-	SubjectConnected           Subject = "connected"
 	SubjectServerDetails       Subject = "serverdetails"
 	SubjectUpdateServerDetails Subject = "updateserverdetails"
 	SubjectGameplayDetails     Subject = "gameplaydetails"
@@ -41,8 +39,6 @@ const (
 type Command = Subject
 
 const (
-	CommandLogin1              Command = "login1"
-	CommandLogin2              Command = "login2"
 	CommandListPlayers         Command = "listplayers"
 	CommandServerDetails       Command = "serverdetails"
 	CommandGameplayDetails     Command = "gameplaydetails"

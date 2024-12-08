@@ -12,7 +12,7 @@ type Unmarshaler interface {
 	UnmarshalMessage([]byte) error
 }
 
-func UnmarshalMessage(content []byte, v any) error {
+func Unmarshal(content []byte, v any) error {
 	if u, ok := v.(Unmarshaler); ok {
 		return u.UnmarshalMessage(content)
 	}
@@ -80,18 +80,19 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 			return nil
 		}
 
-		for {
-			// add empty element to the slice
-			newElem := reflect.New(val.Type().Elem()).Elem()
-			err := unmarshalFields(newElem, fields)
-			if err != nil {
-				if err == errFieldCount {
-					return nil
-				}
-				return err
-			}
-			val.Set(reflect.Append(val, newElem))
-		}
+		// TODO: evaluate usefulness of slice decoding
+		// for {
+		// 	// add empty element to the slice
+		// 	newElem := reflect.New(val.Type().Elem()).Elem()
+		// 	err := unmarshalFields(newElem, fields)
+		// 	if err != nil {
+		// 		if err == errFieldCount {
+		// 			return nil
+		// 		}
+		// 		return err
+		// 	}
+		// 	val.Set(reflect.Append(val, newElem))
+		// }
 	case reflect.Array:
 		for i := 0; i < val.Len(); i += 1 {
 			err := unmarshalFields(val.Index(i), fields)

@@ -7,8 +7,3 @@ func stringToBytes(s string) []byte {
 	b := unsafe.Slice(p, len(s))
 	return b
 }
-
-// func bytesToString(b []byte) string {
-// 	p := unsafe.SliceData(b)
-// 	return unsafe.String(p, len(b))
-// }

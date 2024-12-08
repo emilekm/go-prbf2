@@ -7,46 +7,65 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type testBasicType struct {
+	Integer      int
+	Uinteger     uint
+	Float        float32
+	Str          string
+	SliceOfBytes []byte
+}
+
+type testSimpleType struct {
+	Str string
+}
+
+type testComplexType struct {
+	Arr           [3]string
+	StructValue   testSimpleType
+	StructPointer *testSimpleType
+}
+
+type testSliceSimpleType struct {
+	SliceOfStrings []string
+}
+
 func TestUnmarshalMessage(t *testing.T) {
 	tests := []struct {
-		rawMsg *prism.RawMessage
+		name   string
+		rawMsg []byte
 		output any
 		into   any
 	}{
 		{
-			rawMsg: prism.NewRawMessage("login1", []byte("hash\x03serverchallenge")),
-			output: &prism.Login1Response{
-				Hash:            []byte("hash"),
-				ServerChallenge: []byte("serverchallenge"),
+			name:   "basic type success",
+			rawMsg: []byte("-123\x03123\x032.0\x03test-string\x03testbytes"),
+			output: &testBasicType{
+				Integer:      -123,
+				Uinteger:     123,
+				Float:        2.0,
+				Str:          "test-string",
+				SliceOfBytes: []byte("testbytes"),
 			},
-			into: &prism.Login1Response{},
+			into: &testBasicType{},
 		},
 		{
-			rawMsg: prism.NewRawMessage("chat", []byte("0\x031567934982\x03channel\x03playername\x03content\x0A1\x031567934982\x03channel\x03playername\x03content")),
-			output: &prism.ChatMessages{
-				{
-					Type:       prism.ChatMessageTypeOpfor,
-					Timestamp:  1567934982,
-					Channel:    "channel",
-					PlayerName: "playername",
-					Content:    "content",
-				},
-				{
-					Type:       prism.ChatMessageTypeBlufor,
-					Timestamp:  1567934982,
-					Channel:    "channel",
-					PlayerName: "playername",
-					Content:    "content",
-				},
+			name:   "complex type success",
+			rawMsg: []byte("test1\x03test2\x03test3\x03firstSimple\x03secondSimple"),
+			output: &testComplexType{
+				Arr:           [3]string{"test1", "test2", "test3"},
+				StructValue:   testSimpleType{"firstSimple"},
+				StructPointer: &testSimpleType{"secondSimple"},
 			},
-			into: &prism.ChatMessages{},
+			into: &testComplexType{},
 		},
 	}
 
 	for _, test := range tests {
-		err := prism.UnmarshalMessage(test.rawMsg.Body(), test.into)
-		require.NoError(t, err)
+		t.Run(test.name, func(t *testing.T) {
+			err := prism.Unmarshal(test.rawMsg, test.into)
+			require.NoError(t, err)
 
-		require.Equal(t, test.output, test.into)
+			require.Equal(t, test.output, test.into)
+		})
 	}
 }

@@ -6,29 +6,6 @@ import (
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type=Layer -linecomment -output=messages_strings.go
 
-type Login1Request struct {
-	ServerVersion      ServerVersion
-	Username           string
-	ClientChallengeKey []byte
-}
-
-func (l Login1Request) Subject() Subject {
-	return CommandLogin1
-}
-
-type Login1Response struct {
-	Hash            []byte
-	ServerChallenge []byte
-}
-
-type Login2Request struct {
-	ChallengeDigest string
-}
-
-func (l Login2Request) Subject() Subject {
-	return CommandLogin2
-}
-
 type ChatMessageType int
 
 const (
@@ -183,7 +160,7 @@ func UnmarshalMultipartBody[T any](content []byte) ([]T, error) {
 	var result []T
 	for _, message := range messages {
 		var msg T
-		err := UnmarshalMessage(message, &msg)
+		err := Unmarshal(message, &msg)
 		if err != nil {
 			return nil, err
 		}

@@ -2,12 +2,12 @@ package prism
 
 import (
 	"bufio"
-	"io"
 	"sync"
 )
 
 type Writer struct {
-	W     *bufio.Writer
+	W *bufio.Writer
+
 	mutex sync.Mutex
 }
 
@@ -15,33 +15,27 @@ func NewWriter(w *bufio.Writer) *Writer {
 	return &Writer{W: w}
 }
 
-type errWriter struct {
-	w   io.Writer
-	err error
-}
-
-func (ew *errWriter) write(buf []byte) {
-	if ew.err != nil {
-		return
+func (w *Writer) WriteMessage(msg *Message) error {
+	content, err := msg.MarshalBinary()
+	if err != nil {
+		return err
 	}
-	_, ew.err = ew.w.Write(buf)
+
+	return w.WriteMessageBytes(content)
 }
 
-func (w *Writer) WriteMessage(subject Subject, body []byte) error {
-	ew := &errWriter{w: w.W}
-
+func (w *Writer) WriteMessageBytes(content []byte) error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	ew.write(SeparatorStart)
-	ew.write(stringToBytes(string(subject)))
-	ew.write(SeparatorSubject)
-	ew.write(body)
-	ew.write(SeparatorEnd)
-	ew.write(SeparatorNull)
+	_, err := w.W.Write(content)
+	if err != nil {
+		return err
+	}
 
-	if ew.err != nil {
-		return ew.err
+	_, err = w.W.Write(SeparatorNull)
+	if err != nil {
+		return err
 	}
 
 	return w.W.Flush()

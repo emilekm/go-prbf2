@@ -1,9 +1,9 @@
-package prism2_test
+package prism_test
 
 import (
 	"testing"
 
-	"github.com/emilekm/go-prbf2/prism2"
+	"github.com/emilekm/go-prbf2/prism"
 	"github.com/stretchr/testify/require"
 )
 
@@ -11,14 +11,14 @@ func TestMessageUnmarshalBinary(t *testing.T) {
 	tests := []struct {
 		name   string
 		buffer []byte
-		msg    *prism2.Message
+		msg    *prism.Message
 		err    bool
 	}{
 		{
 			name:   "success",
 			buffer: []byte("\x01login1\x02test\x04"),
-			msg: prism2.NewMessage(
-				prism2.SubjectLogin1,
+			msg: prism.NewMessage(
+				prism.SubjectLogin1,
 				[]byte("test"),
 			),
 		},
@@ -31,7 +31,7 @@ func TestMessageUnmarshalBinary(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			msg := &prism2.Message{}
+			msg := &prism.Message{}
 			err := msg.UnmarshalBinary(test.buffer)
 			if test.err {
 				require.Error(t, err)
@@ -46,21 +46,21 @@ func TestMessageUnmarshalBinary(t *testing.T) {
 func TestMessageMarshalBinary(t *testing.T) {
 	tests := []struct {
 		name   string
-		msg    *prism2.Message
+		msg    *prism.Message
 		buffer []byte
 	}{
 		{
 			name: "success",
-			msg: prism2.NewMessage(
-				prism2.SubjectLogin1,
+			msg: prism.NewMessage(
+				prism.SubjectLogin1,
 				[]byte("test"),
 			),
 			buffer: []byte("\x01login1\x02test\x04"),
 		},
 		{
 			name: "empty-body",
-			msg: prism2.NewMessage(
-				prism2.SubjectLogin1,
+			msg: prism.NewMessage(
+				prism.SubjectLogin1,
 				[]byte{},
 			),
 			buffer: []byte("\x01login1\x02\x04"),

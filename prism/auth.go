@@ -9,20 +9,35 @@ import (
 	"math/rand"
 )
 
+const (
+	SubjectLogin1    Subject = "login1"
+	SubjectConnected Subject = "connected"
+
+	CommandLogin1 Command = "login1"
+	CommandLogin2 Command = "login2"
+)
+
+type Login1Request struct {
+	ServerVersion      ServerVersion
+	Username           string
+	ClientChallengeKey []byte
+}
+
+type Login1Response struct {
+	Hash            []byte
+	ServerChallenge []byte
+}
+
+type Login2Request struct {
+	ChallengeDigest string
+}
+
+// Login authenticates the client with given username and password.
+// It is obligatory to call this method before any other method.
 func (c *Client) Login(ctx context.Context, username, password string) error {
 	cck := cckGen(32)
 
-	resp, err := c.Command(ctx, CommandLogin1, &Login1Request{
-		ServerVersion:      ServerVersion1,
-		Username:           username,
-		ClientChallengeKey: cck,
-	}, SubjectLogin1)
-	if err != nil {
-		return fmt.Errorf("login1: %w", err)
-	}
-
-	var login1Response Login1Response
-	err = UnmarshalMessage(resp.Body(), &login1Response)
+	login1Response, err := c.login1(ctx, username, cck)
 	if err != nil {
 		return fmt.Errorf("login1: %w", err)
 	}
@@ -38,9 +53,54 @@ func (c *Client) Login(ctx context.Context, username, password string) error {
 		return fmt.Errorf("login2: challengedigest: %w", err)
 	}
 
-	_, err = c.Command(ctx, CommandLogin2, &Login2Request{
+	return c.login2(ctx, challengeDigestHash)
+}
+
+func (c *Client) login1(ctx context.Context, username string, cck []byte) (*Login1Response, error) {
+	login1Req, err := Marshal(&Login1Request{
+		ServerVersion:      ServerVersion1,
+		Username:           username,
+		ClientChallengeKey: cck,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("login1: %w", err)
+	}
+
+	resp, err := c.Send(ctx, &Request{
+		Message:         NewMessage(CommandLogin1, login1Req),
+		ExpectedSubject: SubjectLogin1,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("login1: %w", err)
+	}
+
+	var login1Response Login1Response
+	err = Unmarshal(resp.Message.Body(), &login1Response)
+	if err != nil {
+		return nil, fmt.Errorf("login1: %w", err)
+	}
+
+	return &login1Response, nil
+}
+
+func (c *Client) login2(ctx context.Context, challengeDigestHash string) error {
+	login2Req, err := Marshal(&Login2Request{
 		ChallengeDigest: challengeDigestHash,
-	}, SubjectConnected)
+	})
+	if err != nil {
+		return fmt.Errorf("login2: %w", err)
+	}
+
+	resp, err := c.Send(ctx, &Request{
+		Message:         NewMessage(CommandLogin1, login2Req),
+		ExpectedSubject: SubjectLogin1,
+	})
+	if err != nil {
+		return fmt.Errorf("login2: %w", err)
+	}
+
+	var login1Response Login1Response
+	err = Unmarshal(resp.Message.Body(), &login1Response)
 	if err != nil {
 		return fmt.Errorf("login2: %w", err)
 	}

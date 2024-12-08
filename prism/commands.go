@@ -1,4 +1,4 @@
-package prism2
+package prism
 
 import "context"
 

@@ -12,7 +12,7 @@ type Marshaler interface {
 	MarshalMessage() ([]byte, error)
 }
 
-func MarshalMessage(v any) ([]byte, error) {
+func Marshal(v any) ([]byte, error) {
 	if m, ok := v.(Marshaler); ok {
 		return m.MarshalMessage()
 	}
