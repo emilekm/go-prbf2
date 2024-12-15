@@ -2,7 +2,6 @@ package prism
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -39,7 +38,8 @@ func marshalFields(val reflect.Value) ([][]byte, error) {
 
 	switch val.Kind() {
 	case reflect.Bool:
-		return nil, errors.New("bool not supported")
+		fieldValueBool := val.Bool()
+		fields = append(fields, stringToBytes(strconv.Itoa(fastBoolConv(fieldValueBool))))
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		fieldValueInt64 := val.Int()
 		fields = append(fields, stringToBytes(strconv.Itoa(int(fieldValueInt64))))

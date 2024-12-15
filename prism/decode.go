@@ -34,7 +34,15 @@ var errFieldCount = errors.New("field count mismatch")
 func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 	switch val.Kind() {
 	case reflect.Bool:
-		return errors.New("bool not supported")
+		fieldValue, err := fieldValueFromScanner(fields)
+		if err != nil {
+			return err
+		}
+		fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
+		if err != nil {
+			return err
+		}
+		val.SetBool(fieldValueInt64 != 0)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		fieldValue, err := fieldValueFromScanner(fields)
 		if err != nil {

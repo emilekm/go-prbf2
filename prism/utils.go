@@ -7,3 +7,7 @@ func stringToBytes(s string) []byte {
 	b := unsafe.Slice(p, len(s))
 	return b
 }
+
+func fastBoolConv(b bool) int {
+	return int(*(*byte)(unsafe.Pointer(&b)))
+}

@@ -8,6 +8,7 @@ import (
 )
 
 type testBasicType struct {
+	Bool         bool
 	Integer      int
 	Uinteger     uint
 	Float        float32
@@ -38,8 +39,9 @@ func TestUnmarshalMessage(t *testing.T) {
 	}{
 		{
 			name:   "basic type success",
-			rawMsg: []byte("-123\x03123\x032.0\x03test-string\x03testbytes"),
+			rawMsg: []byte("1\x03-123\x03123\x032.0\x03test-string\x03testbytes"),
 			output: &testBasicType{
+				Bool:         true,
 				Integer:      -123,
 				Uinteger:     123,
 				Float:        2.0,
