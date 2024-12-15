@@ -75,6 +75,17 @@ type Map struct {
 	Layer Layer
 }
 
+type ConnectedUsers []string
+
+func (c *ConnectedUsers) UnmarshalMessage(content []byte) error {
+	users := bytes.Split(content, SeparatorBuffer)
+	for _, user := range users {
+		*c = append(*c, string(user))
+	}
+
+	return nil
+}
+
 // Subjects:
 // - serverdetails
 // - updateserverdetails
@@ -97,11 +108,12 @@ type ServerDetails struct {
 	Tickets2       int
 	// []string separated by SeparatorBuffer
 	// Currently impossible to unmarshal this field
-	ConnectedUsers string
+	ConnectedUsers ConnectedUsers
 }
 
 type PlayerDetails struct {
-	Team          int
+	Team int
+	// 0 = none, ?L = squad leader, C = commander
 	Squad         string
 	Kit           string
 	Vehicle       string
@@ -110,11 +122,11 @@ type PlayerDetails struct {
 	Kills         int
 	Teamkills     int
 	Deaths        int
-	Valid         int // ???
+	Valid         bool // ???
 	Ping          int
-	Idle          int
-	Alive         int
-	Joining       int
+	Idle          bool
+	Alive         bool
+	Joining       bool
 	Position      string
 	Rotation      string
 }

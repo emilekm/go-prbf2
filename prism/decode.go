@@ -32,6 +32,15 @@ func unmarshalMessage(content []byte, v any) error {
 var errFieldCount = errors.New("field count mismatch")
 
 func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
+	// If val implements Unmarshaler, call its UnmarshalMessage method
+	if val.Type().Implements(reflect.TypeOf((*Unmarshaler)(nil)).Elem()) {
+		fieldValue, err := fieldValueFromScanner(fields)
+		if err != nil {
+			return err
+		}
+		return val.Interface().(Unmarshaler).UnmarshalMessage([]byte(fieldValue))
+	}
+
 	switch val.Kind() {
 	case reflect.Bool:
 		fieldValue, err := fieldValueFromScanner(fields)
