@@ -40,6 +40,18 @@ func (c *Client) GameplayeDetails(ctx context.Context) (*GameplayDetails, error)
 	return &gameplayDetails, nil
 }
 
+func (c *Client) APIAdmin(ctx context.Context, command string) (string, error) {
+	resp, err := c.Send(ctx, &Request{
+		Message:         NewMessage(CommandAPIAdmin, []byte(command)),
+		ExpectedSubject: SubjectAPIAdminResult,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return string(resp.Message.Body()), nil
+}
+
 func (c *Client) ListPlayers(ctx context.Context) (Players, error) {
 	resp, err := c.Send(ctx, &Request{
 		Message:         NewMessage(CommandListPlayers, nil),
