@@ -2,6 +2,7 @@ package prism
 
 import (
 	"bytes"
+	"reflect"
 )
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type=Layer -linecomment -output=messages_strings.go
@@ -131,24 +132,28 @@ type PlayerDetails struct {
 	Rotation      string
 }
 
-// Player returned with `listplayers` message
-type Player struct {
+type PlayerHeader struct {
 	Name          string
 	IsAIPlayer    int
 	Hash          string
 	IP            string
 	ProfileID     string
 	Index         int
-	JoinTimestamp int
+	JoinTimestamp float64
+}
+
+// FullPlayer returned with `listplayers` message
+type FullPlayer struct {
+	PlayerHeader
 	PlayerDetails
 }
 
 // Subjects:
 // - listplayers
-type Players []Player
+type Players []FullPlayer
 
 func (p *Players) UnmarshalMessage(content []byte) error {
-	players, err := UnmarshalMultipartBody[Player](content)
+	players, err := UnmarshalMultipartBody[FullPlayer](content)
 	if err != nil {
 		return err
 	}
@@ -157,13 +162,50 @@ func (p *Players) UnmarshalMessage(content []byte) error {
 	return nil
 }
 
-// Subjects:
-// - updateplayers
-// NOTE: some players in `updateplayers` might have body of Player instead of UpdatePlayer
-type UpdatePlayer struct {
+type Player struct {
 	Name  string
 	Index int
 	PlayerDetails
+}
+
+// Subjects:
+// - updateplayers
+// NOTE: some players in `updateplayers` might have body of FullPlayer instead of Player
+type UpdatePlayer struct {
+	Full   *FullPlayer
+	Update *Player
+}
+
+type UpdatePlayers []UpdatePlayer
+
+func (p *UpdatePlayers) UnmarshalMessage(content []byte) error {
+	messages := bytes.Split(content, SeparatorBuffer)
+
+	var players []UpdatePlayer
+
+	for _, message := range messages {
+		fieldsNum := len(bytes.Split(message, SeparatorField))
+		if fieldsNum == reflect.TypeOf(FullPlayer{}).NumField() {
+			var player FullPlayer
+			err := Unmarshal(message, &player)
+			if err != nil {
+				return err
+			}
+
+			players = append(players, UpdatePlayer{Full: &player})
+		} else if fieldsNum == reflect.TypeOf(Player{}).NumField() {
+			var player Player
+			err := Unmarshal(message, &player)
+			if err != nil {
+				return err
+			}
+
+			players = append(players, UpdatePlayer{Update: &player})
+		}
+	}
+
+	*p = players
+	return nil
 }
 
 func UnmarshalMultipartBody[T any](content []byte) ([]T, error) {
