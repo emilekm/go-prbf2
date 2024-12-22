@@ -22,6 +22,24 @@ func (c *Client) ServerDetails(ctx context.Context) (*ServerDetails, error) {
 	return &serverDetails, nil
 }
 
+func (c *Client) GameplayeDetails(ctx context.Context) (*GameplayDetails, error) {
+	resp, err := c.Send(ctx, &Request{
+		Message:         NewMessage(CommandGameplayDetails, nil),
+		ExpectedSubject: SubjectGameplayDetails,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var gameplayDetails GameplayDetails
+	err = Unmarshal(resp.Message.Body(), &gameplayDetails)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gameplayDetails, nil
+}
+
 func (c *Client) ListPlayers(ctx context.Context) (Players, error) {
 	resp, err := c.Send(ctx, &Request{
 		Message:         NewMessage(CommandListPlayers, nil),

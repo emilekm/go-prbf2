@@ -2,6 +2,7 @@ package prism
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 )
 
@@ -110,6 +111,76 @@ type ServerDetails struct {
 	// []string separated by SeparatorBuffer
 	// Currently impossible to unmarshal this field
 	ConnectedUsers ConnectedUsers
+}
+
+type ControlPoint struct {
+	ID   string
+	Team int
+}
+
+type Fob struct {
+	Position string
+	Team     int
+}
+
+type Rally struct {
+	Position string
+	Team     int
+	Squad    int
+}
+
+// Not implemented, empty field
+// type Objective struct{}
+
+type GameplayDetails struct {
+	ControlPoints []ControlPoint
+	Fobs          []Fob
+	Rallies       []Rally
+	// Objectives    []Objective
+}
+
+func (g *GameplayDetails) UnmarshalMessage(content []byte) error {
+	fields := bytes.Split(content, SeparatorField)
+
+	if len(fields) < 4 {
+		return fmt.Errorf("GameplayDetails: invalid number of fields")
+	}
+
+	// ControlPoints
+	controlPoints := bytes.Split(fields[0], SeparatorBuffer)
+
+	for _, cp := range controlPoints {
+		split := bytes.SplitN(cp, []byte(":"), 2)
+		g.ControlPoints = append(g.ControlPoints, ControlPoint{
+			ID:   string(split[0]),
+			Team: int(split[1][0]),
+		})
+	}
+
+	// Fobs
+	fobs := bytes.Split(fields[1], SeparatorBuffer)
+
+	for _, fob := range fobs {
+		split := bytes.SplitN(fob, []byte(":"), 2)
+		g.Fobs = append(g.Fobs, Fob{
+			Position: string(split[0]),
+			Team:     int(split[1][0]),
+		})
+	}
+
+	// Rallies
+	rallies := bytes.Split(fields[2], SeparatorBuffer)
+
+	for _, rally := range rallies {
+		split := bytes.SplitN(rally, []byte(":"), 3)
+		g.Rallies = append(g.Rallies, Rally{
+			Position: string(split[0]),
+			Team:     int(split[1][0]),
+			Squad:    int(split[2][0]),
+		})
+	}
+
+	return nil
 }
 
 type PlayerDetails struct {
