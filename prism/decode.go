@@ -47,41 +47,50 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 		if err != nil {
 			return err
 		}
-		fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
-		if err != nil {
-			return err
+		if fieldValue != "" {
+			fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
+			if err != nil {
+				return err
+			}
+			val.SetBool(fieldValueInt64 != 0)
 		}
-		val.SetBool(fieldValueInt64 != 0)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		fieldValue, err := fieldValueFromScanner(fields)
 		if err != nil {
 			return err
 		}
-		fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
-		if err != nil {
-			return err
+
+		if fieldValue != "" {
+			fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
+			if err != nil {
+				return err
+			}
+			val.SetInt(fieldValueInt64)
 		}
-		val.SetInt(fieldValueInt64)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		fieldValue, err := fieldValueFromScanner(fields)
 		if err != nil {
 			return err
 		}
-		fieldValueUint64, err := strconv.ParseUint(fieldValue, 10, 64)
-		if err != nil {
-			return err
+		if fieldValue != "" {
+			fieldValueUint64, err := strconv.ParseUint(fieldValue, 10, 64)
+			if err != nil {
+				return err
+			}
+			val.SetUint(fieldValueUint64)
 		}
-		val.SetUint(fieldValueUint64)
 	case reflect.Float32, reflect.Float64:
 		fieldValue, err := fieldValueFromScanner(fields)
 		if err != nil {
 			return err
 		}
-		fieldValueFloat64, err := strconv.ParseFloat(fieldValue, 64)
-		if err != nil {
-			return err
+		if fieldValue != "" {
+			fieldValueFloat64, err := strconv.ParseFloat(fieldValue, 64)
+			if err != nil {
+				return err
+			}
+			val.SetFloat(fieldValueFloat64)
 		}
-		val.SetFloat(fieldValueFloat64)
 	case reflect.String:
 		fieldValue, err := fieldValueFromScanner(fields)
 		if err != nil {
