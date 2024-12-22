@@ -92,8 +92,8 @@ func (c *Client) login2(ctx context.Context, challengeDigestHash string) error {
 	}
 
 	resp, err := c.Send(ctx, &Request{
-		Message:         NewMessage(CommandLogin1, login2Req),
-		ExpectedSubject: SubjectLogin1,
+		Message:         NewMessage(CommandLogin2, login2Req),
+		ExpectedSubject: SubjectConnected,
 	})
 	if err != nil {
 		return fmt.Errorf("login2: %w", err)
