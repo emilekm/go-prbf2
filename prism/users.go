@@ -45,15 +45,11 @@ type ChangeUser struct {
 	NewPower    int
 }
 
-type Users struct {
+type usersService struct {
 	c *Client
 }
 
-func New(c *Client) *Users {
-	return &Users{c}
-}
-
-func (u *Users) List(ctx context.Context) (UserList, error) {
+func (u *usersService) List(ctx context.Context) (UserList, error) {
 	resp, err := u.c.Send(ctx, &Request{
 		Message:         NewMessage(CommandGetUsers, nil),
 		ExpectedSubject: SubjectGetUsers,
@@ -65,7 +61,7 @@ func (u *Users) List(ctx context.Context) (UserList, error) {
 	return usersList(resp.Message)
 }
 
-func (u *Users) Add(ctx context.Context, newUser AddUser) (UserList, error) {
+func (u *usersService) Add(ctx context.Context, newUser AddUser) (UserList, error) {
 	payload, err := Marshal(newUser)
 	if err != nil {
 		return nil, err
@@ -82,7 +78,7 @@ func (u *Users) Add(ctx context.Context, newUser AddUser) (UserList, error) {
 	return usersList(resp.Message)
 }
 
-func (u *Users) Change(ctx context.Context, user ChangeUser) (UserList, error) {
+func (u *usersService) Change(ctx context.Context, user ChangeUser) (UserList, error) {
 	payload, err := Marshal(user)
 	if err != nil {
 		return nil, err
@@ -99,7 +95,7 @@ func (u *Users) Change(ctx context.Context, user ChangeUser) (UserList, error) {
 	return usersList(resp.Message)
 }
 
-func (u *Users) Delete(ctx context.Context, name string) (UserList, error) {
+func (u *usersService) Delete(ctx context.Context, name string) (UserList, error) {
 	resp, err := u.c.Send(ctx, &Request{
 		Message:         NewMessage(CommandDeleteUser, []byte(name)),
 		ExpectedSubject: SubjectGetUsers,

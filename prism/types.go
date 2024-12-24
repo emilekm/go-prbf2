@@ -32,7 +32,6 @@ const (
 	SubjectPlayerLeave         Subject = "playerleave"
 	SubjectChat                Subject = "chat"
 	SubjectKill                Subject = "kill"
-	SubjectRACommand           Subject = "say"
 )
 
 // Command is the outgoing subject
@@ -44,6 +43,7 @@ const (
 	CommandGameplayDetails     Command = "gameplaydetails"
 	CommandReadMaplist         Command = "readmaplist"
 	CommandAPIAdmin            Command = "apiadmin"
+	CommandRACommand           Command = "say"
 	CommandServerDetailsAlways Command = "serverdetailsalways"
 )
 

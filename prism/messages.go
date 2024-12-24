@@ -108,8 +108,6 @@ type ServerDetails struct {
 	Team2          string
 	Tickets1       int
 	Tickets2       int
-	// []string separated by SeparatorBuffer
-	// Currently impossible to unmarshal this field
 	ConnectedUsers ConnectedUsers
 }
 

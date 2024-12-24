@@ -20,6 +20,12 @@ type Client struct {
 
 	*broker
 
+	Server   *serverService
+	Gameplay *gameplayService
+	Players  *playersService
+	Users    *usersService
+	Admin    *adminService
+
 	textproto.Pipeline
 	conn io.ReadWriteCloser
 }
@@ -31,6 +37,12 @@ func NewClient(conn io.ReadWriteCloser) *Client {
 		Pipeline: textproto.Pipeline{},
 		conn:     conn,
 	}
+
+	c.Server = &serverService{c: c}
+	c.Gameplay = &gameplayService{c: c}
+	c.Players = &playersService{c: c}
+	c.Users = &usersService{c: c}
+	c.Admin = &adminService{c: c}
 
 	c.broker = newBroker(c)
 

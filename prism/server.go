@@ -2,10 +2,15 @@ package prism
 
 import "context"
 
+type serverService struct {
+	c       *Client
+	started bool
+}
+
 // Using `serverdetailsalways` instead of `serverdetails`
 // because the latter might not return all the fields.
-func (c *Client) ServerDetails(ctx context.Context) (*ServerDetails, error) {
-	resp, err := c.Send(ctx, &Request{
+func (s *serverService) Details(ctx context.Context) (*ServerDetails, error) {
+	resp, err := s.c.Send(ctx, &Request{
 		Message:         NewMessage(CommandServerDetailsAlways, nil),
 		ExpectedSubject: SubjectServerDetails,
 	})
@@ -19,11 +24,30 @@ func (c *Client) ServerDetails(ctx context.Context) (*ServerDetails, error) {
 		return nil, err
 	}
 
+	s.started = true
+
 	return &serverDetails, nil
 }
 
-func (c *Client) GameplayeDetails(ctx context.Context) (*GameplayDetails, error) {
-	resp, err := c.Send(ctx, &Request{
+func (s *serverService) DetailsUpdates(ctx context.Context) (Subscriber, error) {
+	if !s.started {
+		_, err := s.Details(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	sub := s.c.Subscribe(SubjectUpdateServerDetails)
+	return sub, nil
+}
+
+type gameplayService struct {
+	c       *Client
+	started bool
+}
+
+func (s *gameplayService) Details(ctx context.Context) (*GameplayDetails, error) {
+	resp, err := s.c.Send(ctx, &Request{
 		Message:         NewMessage(CommandGameplayDetails, nil),
 		ExpectedSubject: SubjectGameplayDetails,
 	})
@@ -37,23 +61,30 @@ func (c *Client) GameplayeDetails(ctx context.Context) (*GameplayDetails, error)
 		return nil, err
 	}
 
+	s.started = true
+
 	return &gameplayDetails, nil
 }
 
-func (c *Client) APIAdmin(ctx context.Context, command string) (string, error) {
-	resp, err := c.Send(ctx, &Request{
-		Message:         NewMessage(CommandAPIAdmin, []byte(command)),
-		ExpectedSubject: SubjectAPIAdminResult,
-	})
-	if err != nil {
-		return "", err
+func (s *gameplayService) DetailsUpdates(ctx context.Context) (Subscriber, error) {
+	if !s.started {
+		_, err := s.Details(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return string(resp.Message.Body()), nil
+	sub := s.c.Subscribe(SubjectUpdateServerDetails)
+	return sub, nil
 }
 
-func (c *Client) ListPlayers(ctx context.Context) (Players, error) {
-	resp, err := c.Send(ctx, &Request{
+type playersService struct {
+	c       *Client
+	started bool
+}
+
+func (s *playersService) List(ctx context.Context) (Players, error) {
+	resp, err := s.c.Send(ctx, &Request{
 		Message:         NewMessage(CommandListPlayers, nil),
 		ExpectedSubject: SubjectListPlayers,
 	})
@@ -71,5 +102,59 @@ func (c *Client) ListPlayers(ctx context.Context) (Players, error) {
 		return nil, err
 	}
 
+	s.started = true
+
 	return players, nil
+}
+
+func (s *playersService) ListUpdates(ctx context.Context) (Subscriber, error) {
+	if !s.started {
+		_, err := s.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	sub := s.c.Subscribe(SubjectUpdatePlayers)
+	return sub, nil
+}
+
+func (s *playersService) PlayerLeaveUpdates(ctx context.Context) (Subscriber, error) {
+	if !s.started {
+		_, err := s.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	sub := s.c.Subscribe(SubjectPlayerLeave)
+	return sub, nil
+}
+
+type adminService struct {
+	c *Client
+}
+
+func (s *adminService) APIAdmin(ctx context.Context, command string) (string, error) {
+	resp, err := s.c.Send(ctx, &Request{
+		Message:         NewMessage(CommandAPIAdmin, []byte(command)),
+		ExpectedSubject: SubjectAPIAdminResult,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return string(resp.Message.Body()), nil
+}
+
+func (s *adminService) RACommand(ctx context.Context, command string) (string, error) {
+	resp, err := s.c.Send(ctx, &Request{
+		Message:         NewMessage(CommandRACommand, []byte(command)),
+		ExpectedSubject: SubjectSuccess,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return string(resp.Message.Body()), nil
 }
