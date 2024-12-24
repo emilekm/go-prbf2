@@ -47,7 +47,8 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 		if err != nil {
 			return err
 		}
-		if fieldValue != "" {
+
+		if !ignoreField(fieldValue) {
 			fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
 			if err != nil {
 				return err
@@ -60,7 +61,7 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 			return err
 		}
 
-		if fieldValue != "" {
+		if !ignoreField(fieldValue) {
 			fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
 			if err != nil {
 				return err
@@ -72,7 +73,8 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 		if err != nil {
 			return err
 		}
-		if fieldValue != "" {
+
+		if !ignoreField(fieldValue) {
 			fieldValueUint64, err := strconv.ParseUint(fieldValue, 10, 64)
 			if err != nil {
 				return err
@@ -84,7 +86,8 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 		if err != nil {
 			return err
 		}
-		if fieldValue != "" {
+
+		if !ignoreField(fieldValue) {
 			fieldValueFloat64, err := strconv.ParseFloat(fieldValue, 64)
 			if err != nil {
 				return err
@@ -173,4 +176,8 @@ func fieldValueFromScanner(fields *bufio.Scanner) (string, error) {
 	}
 
 	return fields.Text(), nil
+}
+
+func ignoreField(field string) bool {
+	return field == "" || field == "None"
 }
