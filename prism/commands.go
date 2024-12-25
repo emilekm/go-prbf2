@@ -50,7 +50,9 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 		var errMsg Error
 		err = Unmarshal(message.body, &errMsg)
 		if err != nil {
-			return nil, err
+			return &Response{
+				Message: message,
+			}, err
 		}
 
 		return nil, errMsg
@@ -58,7 +60,9 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 		var errMsg Error
 		err = Unmarshal(message.body, &errMsg)
 		if err != nil {
-			return nil, err
+			return &Response{
+				Message: message,
+			}, err
 		}
 
 		return nil, errMsg

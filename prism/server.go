@@ -1,6 +1,9 @@
 package prism
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 type serverService struct {
 	c       *Client
@@ -147,14 +150,29 @@ func (s *adminService) APIAdmin(ctx context.Context, command string) (string, er
 	return string(resp.Message.Body()), nil
 }
 
-func (s *adminService) RACommand(ctx context.Context, command string) (string, error) {
+func (s *adminService) RACommand(ctx context.Context, command string) (*RACommandOutcome, error) {
 	resp, err := s.c.Send(ctx, &Request{
 		Message:         NewMessage(CommandRACommand, []byte(command)),
 		ExpectedSubject: SubjectSuccess,
 	})
 	if err != nil {
-		return "", err
+		var msgErr Error
+		if errors.As(err, &msgErr) {
+			return nil, err
+		}
+		var msg RACommandOutcome
+		err2 := Unmarshal(resp.Message.Body(), &msg)
+		if err2 != nil {
+			return nil, err
+		}
+		return &msg, nil
 	}
 
-	return string(resp.Message.Body()), nil
+	var msg RACommandOutcome
+	err = Unmarshal(resp.Message.Body(), &msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &msg, nil
 }

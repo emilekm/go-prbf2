@@ -8,6 +8,11 @@ import (
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type=Layer -linecomment -output=messages_strings.go
 
+type RACommandOutcome struct {
+	Topic   string
+	Content string
+}
+
 type ChatMessageType int
 
 const (
