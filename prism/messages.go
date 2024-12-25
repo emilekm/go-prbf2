@@ -208,7 +208,7 @@ type PlayerDetails struct {
 
 type PlayerHeader struct {
 	Name          string
-	IsAIPlayer    int
+	IsAIPlayer    bool
 	Hash          string
 	IP            string
 	ProfileID     string
