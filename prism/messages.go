@@ -7,6 +7,16 @@ import (
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type=Layer -linecomment -output=messages_strings.go
 
+type Position struct {
+	X, Y, Z int16
+}
+
+// Unmarshal from string (-120, 40, -138)
+func (p *Position) UnmarshalMessage(content []byte) error {
+	_, err := fmt.Sscanf(string(content), "(%d, %d, %d)", &p.X, &p.Y, &p.Z)
+	return err
+}
+
 type RACommandOutcome struct {
 	Topic   string
 	Content string
@@ -121,12 +131,12 @@ type ControlPoint struct {
 }
 
 type Fob struct {
-	Position string
+	Position Position
 	Team     int
 }
 
 type Rally struct {
-	Position string
+	Position Position
 	Team     int
 	Squad    int
 }
@@ -164,8 +174,14 @@ func (g *GameplayDetails) UnmarshalMessage(content []byte) error {
 
 	for _, fob := range fobs {
 		split := bytes.SplitN(fob, []byte(":"), 2)
+		var pos Position
+		err := pos.UnmarshalMessage(split[0])
+		if err != nil {
+			return err
+		}
+
 		g.Fobs = append(g.Fobs, Fob{
-			Position: string(split[0]),
+			Position: pos,
 			Team:     int(split[1][0]),
 		})
 	}
@@ -175,8 +191,14 @@ func (g *GameplayDetails) UnmarshalMessage(content []byte) error {
 
 	for _, rally := range rallies {
 		split := bytes.SplitN(rally, []byte(":"), 3)
+		var pos Position
+		err := pos.UnmarshalMessage(split[0])
+		if err != nil {
+			return err
+		}
+
 		g.Rallies = append(g.Rallies, Rally{
-			Position: string(split[0]),
+			Position: pos,
 			Team:     int(split[1][0]),
 			Squad:    int(split[2][0]),
 		})
@@ -201,7 +223,7 @@ type PlayerDetails struct {
 	Idle          bool
 	Alive         bool
 	Joining       bool
-	Position      string
+	Position      Position
 	Rotation      string
 }
 
