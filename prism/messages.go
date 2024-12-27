@@ -3,7 +3,6 @@ package prism
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 )
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type=Layer -linecomment -output=messages_strings.go
@@ -250,6 +249,11 @@ type UpdatePlayer struct {
 	Update *Player
 }
 
+const (
+	fullPlayerFieldsCount   = 23
+	updatePlayerFieldsCount = 18
+)
+
 type UpdatePlayers []UpdatePlayer
 
 func (p *UpdatePlayers) UnmarshalMessage(content []byte) error {
@@ -258,8 +262,8 @@ func (p *UpdatePlayers) UnmarshalMessage(content []byte) error {
 	var players []UpdatePlayer
 
 	for _, message := range messages {
-		fieldsNum := len(bytes.Split(message, SeparatorField))
-		if fieldsNum == reflect.TypeOf(FullPlayer{}).NumField() {
+		fieldsNum := bytes.Count(message, SeparatorField)
+		if fieldsNum == fullPlayerFieldsCount {
 			var player FullPlayer
 			err := Unmarshal(message, &player)
 			if err != nil {
@@ -267,7 +271,7 @@ func (p *UpdatePlayers) UnmarshalMessage(content []byte) error {
 			}
 
 			players = append(players, UpdatePlayer{Full: &player})
-		} else if fieldsNum == reflect.TypeOf(Player{}).NumField() {
+		} else if fieldsNum == updatePlayerFieldsCount {
 			var player Player
 			err := Unmarshal(message, &player)
 			if err != nil {
