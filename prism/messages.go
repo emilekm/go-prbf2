@@ -262,7 +262,7 @@ func (p *UpdatePlayers) UnmarshalMessage(content []byte) error {
 	var players []UpdatePlayer
 
 	for _, message := range messages {
-		fieldsNum := bytes.Count(message, SeparatorField)
+		fieldsNum := bytes.Count(message, SeparatorField) + 1
 		if fieldsNum == fullPlayerFieldsCount {
 			var player FullPlayer
 			err := Unmarshal(message, &player)
