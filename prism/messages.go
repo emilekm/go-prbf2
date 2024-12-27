@@ -28,7 +28,7 @@ const (
 
 type ChatMessage struct {
 	Type       ChatMessageType
-	Timestamp  int
+	Timestamp  float64
 	Channel    string
 	PlayerName string
 	Content    string
@@ -48,7 +48,7 @@ func (m *ChatMessages) UnmarshalMessage(content []byte) error {
 
 type KillMessage struct {
 	IsTeamKill   bool
-	Timestamp    int
+	Timestamp    float64
 	AttackerName string
 	VictimName   string
 	Weapon       string
