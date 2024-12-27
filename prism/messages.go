@@ -8,12 +8,12 @@ import (
 //go:generate go run golang.org/x/tools/cmd/stringer -type=Layer -linecomment -output=messages_strings.go
 
 type Position struct {
-	X, Y, Z int16
+	X, Y, Z float64
 }
 
 // Unmarshal from string (-120, 40, -138)
 func (p *Position) UnmarshalMessage(content []byte) error {
-	_, err := fmt.Sscanf(string(content), "(%d, %d, %d)", &p.X, &p.Y, &p.Z)
+	_, err := fmt.Sscanf(string(content), "(%f, %f, %f)", &p.X, &p.Y, &p.Z)
 	return err
 }
 
