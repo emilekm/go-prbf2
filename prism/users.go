@@ -62,7 +62,9 @@ func (u *usersService) List(ctx context.Context) (UserList, error) {
 }
 
 func (u *usersService) Add(ctx context.Context, newUser *AddUser) (UserList, error) {
-	payload, err := Marshal(newUser)
+	user := *newUser
+	user.Password = stringHash(newUser.Password)
+	payload, err := Marshal(user)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +80,11 @@ func (u *usersService) Add(ctx context.Context, newUser *AddUser) (UserList, err
 	return usersList(resp.Message)
 }
 
-func (u *usersService) Change(ctx context.Context, user *ChangeUser) (UserList, error) {
+func (u *usersService) Change(ctx context.Context, changedUser *ChangeUser) (UserList, error) {
+	user := *changedUser
+	if changedUser.NewPassword != "" {
+		user.NewPassword = stringHash(changedUser.NewPassword)
+	}
 	payload, err := Marshal(user)
 	if err != nil {
 		return nil, err
