@@ -64,7 +64,7 @@ func (u *usersService) List(ctx context.Context) (UserList, error) {
 func (u *usersService) Add(ctx context.Context, newUser *AddUser) (UserList, error) {
 	user := *newUser
 	user.Password = stringHash(newUser.Password)
-	payload, err := Marshal(user)
+	payload, err := Marshal(&user)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (u *usersService) Change(ctx context.Context, changedUser *ChangeUser) (Use
 	if changedUser.NewPassword != "" {
 		user.NewPassword = stringHash(changedUser.NewPassword)
 	}
-	payload, err := Marshal(user)
+	payload, err := Marshal(&user)
 	if err != nil {
 		return nil, err
 	}
