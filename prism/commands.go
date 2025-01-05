@@ -30,11 +30,14 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 
 	if req.ExpectedSubject != Subject("") {
 		channels[req.ExpectedSubject] = c.Subscribe(req.ExpectedSubject)
+		defer c.Unsubscribe(channels[req.ExpectedSubject])
 	}
 
 	if !req.IgnoreError {
 		channels[SubjectError] = c.Subscribe(SubjectError)
 		channels[SubjectCriticalError] = c.Subscribe(SubjectCriticalError)
+		defer c.Unsubscribe(channels[SubjectError])
+		defer c.Unsubscribe(channels[SubjectCriticalError])
 	}
 
 	defer c.EndResponse(id)
