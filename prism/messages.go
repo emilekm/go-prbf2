@@ -15,7 +15,7 @@ type RACommandOutcome struct {
 type ChatMessageType int
 
 const (
-	ChatMessageUnknown ChatMessageType = iota - 1
+	ChatMessageGlobal ChatMessageType = iota - 1
 	ChatMessageTypeOpfor
 	ChatMessageTypeBlufor
 	ChatMessageTypeSquad
