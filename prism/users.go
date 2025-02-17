@@ -1,6 +1,8 @@
 package prism
 
-import "context"
+import (
+	"context"
+)
 
 const (
 	SubjectGetUsers Subject = "getusers"
@@ -21,7 +23,7 @@ type User struct {
 type UserList []User
 
 func (u *UserList) UnmarshalMessage(content []byte) error {
-	users, err := multipartBody[User](content)
+	users, err := UnmarshalMultipartBody[User](content)
 	if err != nil {
 		return err
 	}
@@ -43,53 +45,81 @@ type ChangeUser struct {
 	NewPower    int
 }
 
-type Users struct {
+type usersService struct {
 	c *Client
 }
 
-func (u *Users) List(ctx context.Context) (UserList, error) {
-	rawMsg, err := u.c.Command(ctx, CommandGetUsers, nil, SubjectGetUsers)
+func (u *usersService) List(ctx context.Context) (UserList, error) {
+	resp, err := u.c.Send(ctx, &Request{
+		Message:         NewMessage(CommandGetUsers, nil),
+		ExpectedSubject: SubjectGetUsers,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return usersList(rawMsg)
+	return usersList(resp.Message)
 }
 
-func (u *Users) Add(ctx context.Context, newUser AddUser) (UserList, error) {
-	rawMsg, err := u.c.Command(ctx, CommandAddUser, &newUser, SubjectGetUsers)
+func (u *usersService) Add(ctx context.Context, newUser *AddUser) (UserList, error) {
+	user := *newUser
+	user.Password = stringHash(newUser.Password)
+	payload, err := Marshal(&user)
 	if err != nil {
 		return nil, err
 	}
 
-	return usersList(rawMsg)
-}
-
-func (u *Users) Change(ctx context.Context, user ChangeUser) (UserList, error) {
-	rawMsg, err := u.c.Command(ctx, CommandChangeUser, &user, SubjectGetUsers)
+	resp, err := u.c.Send(ctx, &Request{
+		Message:         NewMessage(CommandAddUser, payload),
+		ExpectedSubject: SubjectGetUsers,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return usersList(rawMsg)
+	return usersList(resp.Message)
 }
 
-func (u *Users) Delete(ctx context.Context, name string) (UserList, error) {
-	rawMsg, err := u.c.Command(ctx, CommandDeleteUser, &name, SubjectGetUsers)
+func (u *usersService) Change(ctx context.Context, changedUser *ChangeUser) (UserList, error) {
+	user := *changedUser
+	if changedUser.NewPassword != "" {
+		user.NewPassword = stringHash(changedUser.NewPassword)
+	}
+	payload, err := Marshal(&user)
 	if err != nil {
 		return nil, err
 	}
 
-	return usersList(rawMsg)
+	resp, err := u.c.Send(ctx, &Request{
+		Message:         NewMessage(CommandChangeUser, payload),
+		ExpectedSubject: SubjectGetUsers,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return usersList(resp.Message)
 }
 
-func usersList(rawMsg *RawMessage) (UserList, error) {
+func (u *usersService) Delete(ctx context.Context, name string) (UserList, error) {
+	resp, err := u.c.Send(ctx, &Request{
+		Message:         NewMessage(CommandDeleteUser, []byte(name)),
+		ExpectedSubject: SubjectGetUsers,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return usersList(resp.Message)
+}
+
+func usersList(rawMsg *Message) (UserList, error) {
 	var users UserList
 	if len(rawMsg.Body()) == 0 {
 		return users, nil
 	}
 
-	err := UnmarshalMessage(rawMsg.Body(), &users)
+	err := users.UnmarshalMessage(rawMsg.Body())
 	if err != nil {
 		return nil, err
 	}

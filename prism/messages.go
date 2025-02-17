@@ -2,37 +2,20 @@ package prism
 
 import (
 	"bytes"
+	"fmt"
 )
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type=Layer -linecomment -output=messages_strings.go
 
-type Login1Request struct {
-	ServerVersion      ServerVersion
-	Username           string
-	ClientChallengeKey []byte
-}
-
-func (l Login1Request) Subject() Subject {
-	return CommandLogin1
-}
-
-type Login1Response struct {
-	Hash            []byte
-	ServerChallenge []byte
-}
-
-type Login2Request struct {
-	ChallengeDigest string
-}
-
-func (l Login2Request) Subject() Subject {
-	return CommandLogin2
+type RACommandOutcome struct {
+	Topic   string
+	Content string
 }
 
 type ChatMessageType int
 
 const (
-	ChatMessageUnknown ChatMessageType = iota - 1
+	ChatMessageGlobal ChatMessageType = iota - 1
 	ChatMessageTypeOpfor
 	ChatMessageTypeBlufor
 	ChatMessageTypeSquad
@@ -44,7 +27,7 @@ const (
 
 type ChatMessage struct {
 	Type       ChatMessageType
-	Timestamp  int
+	Timestamp  float64
 	Channel    string
 	PlayerName string
 	Content    string
@@ -53,7 +36,7 @@ type ChatMessage struct {
 type ChatMessages []ChatMessage
 
 func (m *ChatMessages) UnmarshalMessage(content []byte) error {
-	chats, err := multipartBody[ChatMessage](content)
+	chats, err := UnmarshalMultipartBody[ChatMessage](content)
 	if err != nil {
 		return err
 	}
@@ -64,7 +47,7 @@ func (m *ChatMessages) UnmarshalMessage(content []byte) error {
 
 type KillMessage struct {
 	IsTeamKill   bool
-	Timestamp    int
+	Timestamp    float64
 	AttackerName string
 	VictimName   string
 	Weapon       string
@@ -73,7 +56,7 @@ type KillMessage struct {
 type KillMessages []KillMessage
 
 func (m *KillMessages) UnmarshalMessage(content []byte) error {
-	kills, err := multipartBody[KillMessage](content)
+	kills, err := UnmarshalMultipartBody[KillMessage](content)
 	if err != nil {
 		return err
 	}
@@ -98,6 +81,17 @@ type Map struct {
 	Layer Layer
 }
 
+type ConnectedUsers []string
+
+func (c *ConnectedUsers) UnmarshalMessage(content []byte) error {
+	users := bytes.Split(content, SeparatorBuffer)
+	for _, user := range users {
+		*c = append(*c, string(user))
+	}
+
+	return nil
+}
+
 // Subjects:
 // - serverdetails
 // - updateserverdetails
@@ -118,13 +112,82 @@ type ServerDetails struct {
 	Team2          string
 	Tickets1       int
 	Tickets2       int
-	// []string separated by SeparatorBuffer
-	// Currently impossible to unmarshal this field
-	ConnectedUsers string
+	ConnectedUsers ConnectedUsers
+}
+
+type ControlPoint struct {
+	ID   string
+	Team int
+}
+
+type Fob struct {
+	Position string
+	Team     int
+}
+
+type Rally struct {
+	Position string
+	Team     int
+	Squad    int
+}
+
+// Not implemented, empty field
+// type Objective struct{}
+
+type GameplayDetails struct {
+	ControlPoints []ControlPoint
+	Fobs          []Fob
+	Rallies       []Rally
+	// Objectives    []Objective
+}
+
+func (g *GameplayDetails) UnmarshalMessage(content []byte) error {
+	fields := bytes.Split(content, SeparatorField)
+
+	if len(fields) < 4 {
+		return fmt.Errorf("GameplayDetails: invalid number of fields")
+	}
+
+	// ControlPoints
+	controlPoints := bytes.Split(fields[0], SeparatorBuffer)
+
+	for _, cp := range controlPoints {
+		split := bytes.SplitN(cp, []byte(":"), 2)
+		g.ControlPoints = append(g.ControlPoints, ControlPoint{
+			ID:   string(split[0]),
+			Team: int(split[1][0]),
+		})
+	}
+
+	// Fobs
+	fobs := bytes.Split(fields[1], SeparatorBuffer)
+
+	for _, fob := range fobs {
+		split := bytes.SplitN(fob, []byte(":"), 2)
+		g.Fobs = append(g.Fobs, Fob{
+			Position: string(split[0]),
+			Team:     int(split[1][0]),
+		})
+	}
+
+	// Rallies
+	rallies := bytes.Split(fields[2], SeparatorBuffer)
+
+	for _, rally := range rallies {
+		split := bytes.SplitN(rally, []byte(":"), 3)
+		g.Rallies = append(g.Rallies, Rally{
+			Position: string(split[0]),
+			Team:     int(split[1][0]),
+			Squad:    int(split[2][0]),
+		})
+	}
+
+	return nil
 }
 
 type PlayerDetails struct {
-	Team          int
+	Team int
+	// 0 = none, ?L = squad leader, C = commander
 	Squad         string
 	Kit           string
 	Vehicle       string
@@ -133,33 +196,37 @@ type PlayerDetails struct {
 	Kills         int
 	Teamkills     int
 	Deaths        int
-	Valid         int // ???
+	Valid         bool // ???
 	Ping          int
-	Idle          int
-	Alive         int
-	Joining       int
+	Idle          bool
+	Alive         bool
+	Joining       bool
 	Position      string
 	Rotation      string
 }
 
-// Player returned with `listplayers` message
-type Player struct {
+type PlayerHeader struct {
 	Name          string
-	IsAIPlayer    int
+	IsAIPlayer    bool
 	Hash          string
 	IP            string
 	ProfileID     string
 	Index         int
-	JoinTimestamp int
+	JoinTimestamp float64
+}
+
+// FullPlayer returned with `listplayers` message
+type FullPlayer struct {
+	PlayerHeader
 	PlayerDetails
 }
 
 // Subjects:
 // - listplayers
-type Players []Player
+type Players []FullPlayer
 
 func (p *Players) UnmarshalMessage(content []byte) error {
-	players, err := multipartBody[Player](content)
+	players, err := UnmarshalMultipartBody[FullPlayer](content)
 	if err != nil {
 		return err
 	}
@@ -168,22 +235,64 @@ func (p *Players) UnmarshalMessage(content []byte) error {
 	return nil
 }
 
-// Subjects:
-// - updateplayers
-// NOTE: some players in `updateplayers` might have body of Player instead of UpdatePlayer
-type UpdatePlayer struct {
+type Player struct {
 	Name  string
 	Index int
 	PlayerDetails
 }
 
-func multipartBody[T any](content []byte) ([]T, error) {
+// Subjects:
+// - updateplayers
+// NOTE: some players in `updateplayers` might have body of FullPlayer instead of Player
+type UpdatePlayer struct {
+	Full   *FullPlayer
+	Update *Player
+}
+
+const (
+	fullPlayerFieldsCount   = 23
+	updatePlayerFieldsCount = 18
+)
+
+type UpdatePlayers []UpdatePlayer
+
+func (p *UpdatePlayers) UnmarshalMessage(content []byte) error {
+	messages := bytes.Split(content, SeparatorBuffer)
+
+	var players []UpdatePlayer
+
+	for _, message := range messages {
+		fieldsNum := bytes.Count(message, SeparatorField) + 1
+		if fieldsNum == fullPlayerFieldsCount {
+			var player FullPlayer
+			err := Unmarshal(message, &player)
+			if err != nil {
+				return err
+			}
+
+			players = append(players, UpdatePlayer{Full: &player})
+		} else if fieldsNum == updatePlayerFieldsCount {
+			var player Player
+			err := Unmarshal(message, &player)
+			if err != nil {
+				return err
+			}
+
+			players = append(players, UpdatePlayer{Update: &player})
+		}
+	}
+
+	*p = players
+	return nil
+}
+
+func UnmarshalMultipartBody[T any](content []byte) ([]T, error) {
 	messages := bytes.Split(content, SeparatorBuffer)
 
 	var result []T
 	for _, message := range messages {
 		var msg T
-		err := UnmarshalMessage(message, &msg)
+		err := Unmarshal(message, &msg)
 		if err != nil {
 			return nil, err
 		}

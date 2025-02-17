@@ -12,7 +12,7 @@ type Unmarshaler interface {
 	UnmarshalMessage([]byte) error
 }
 
-func UnmarshalMessage(content []byte, v any) error {
+func Unmarshal(content []byte, v any) error {
 	if u, ok := v.(Unmarshaler); ok {
 		return u.UnmarshalMessage(content)
 	}
@@ -32,39 +32,68 @@ func unmarshalMessage(content []byte, v any) error {
 var errFieldCount = errors.New("field count mismatch")
 
 func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
+	// If val implements Unmarshaler, call its UnmarshalMessage method
+	if val.Type().Implements(reflect.TypeOf((*Unmarshaler)(nil)).Elem()) {
+		fieldValue, err := fieldValueFromScanner(fields)
+		if err != nil {
+			return err
+		}
+		return val.Interface().(Unmarshaler).UnmarshalMessage([]byte(fieldValue))
+	}
+
 	switch val.Kind() {
 	case reflect.Bool:
-		return errors.New("bool not supported")
+		fieldValue, err := fieldValueFromScanner(fields)
+		if err != nil {
+			return err
+		}
+
+		if !ignoreField(fieldValue) {
+			fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
+			if err != nil {
+				return err
+			}
+			val.SetBool(fieldValueInt64 != 0)
+		}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		fieldValue, err := fieldValueFromScanner(fields)
 		if err != nil {
 			return err
 		}
-		fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
-		if err != nil {
-			return err
+
+		if !ignoreField(fieldValue) {
+			fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
+			if err != nil {
+				return err
+			}
+			val.SetInt(fieldValueInt64)
 		}
-		val.SetInt(fieldValueInt64)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		fieldValue, err := fieldValueFromScanner(fields)
 		if err != nil {
 			return err
 		}
-		fieldValueUint64, err := strconv.ParseUint(fieldValue, 10, 64)
-		if err != nil {
-			return err
+
+		if !ignoreField(fieldValue) {
+			fieldValueUint64, err := strconv.ParseUint(fieldValue, 10, 64)
+			if err != nil {
+				return err
+			}
+			val.SetUint(fieldValueUint64)
 		}
-		val.SetUint(fieldValueUint64)
 	case reflect.Float32, reflect.Float64:
 		fieldValue, err := fieldValueFromScanner(fields)
 		if err != nil {
 			return err
 		}
-		fieldValueFloat64, err := strconv.ParseFloat(fieldValue, 64)
-		if err != nil {
-			return err
+
+		if !ignoreField(fieldValue) {
+			fieldValueFloat64, err := strconv.ParseFloat(fieldValue, 64)
+			if err != nil {
+				return err
+			}
+			val.SetFloat(fieldValueFloat64)
 		}
-		val.SetFloat(fieldValueFloat64)
 	case reflect.String:
 		fieldValue, err := fieldValueFromScanner(fields)
 		if err != nil {
@@ -80,18 +109,19 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 			return nil
 		}
 
-		for {
-			// add empty element to the slice
-			newElem := reflect.New(val.Type().Elem()).Elem()
-			err := unmarshalFields(newElem, fields)
-			if err != nil {
-				if err == errFieldCount {
-					return nil
-				}
-				return err
-			}
-			val.Set(reflect.Append(val, newElem))
-		}
+		// TODO: evaluate usefulness of slice decoding
+		// for {
+		// 	// add empty element to the slice
+		// 	newElem := reflect.New(val.Type().Elem()).Elem()
+		// 	err := unmarshalFields(newElem, fields)
+		// 	if err != nil {
+		// 		if err == errFieldCount {
+		// 			return nil
+		// 		}
+		// 		return err
+		// 	}
+		// 	val.Set(reflect.Append(val, newElem))
+		// }
 	case reflect.Array:
 		for i := 0; i < val.Len(); i += 1 {
 			err := unmarshalFields(val.Index(i), fields)
@@ -129,7 +159,7 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 }
 
 func splitFieldsFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if i := bytes.IndexByte(data, SeparatorField[0]); i >= 0 {
+	if i := bytes.IndexByte(data, SeparatorField1); i >= 0 {
 		return i + 1, data[0:i], nil
 	}
 
@@ -146,4 +176,8 @@ func fieldValueFromScanner(fields *bufio.Scanner) (string, error) {
 	}
 
 	return fields.Text(), nil
+}
+
+func ignoreField(field string) bool {
+	return field == "" || field == "None"
 }

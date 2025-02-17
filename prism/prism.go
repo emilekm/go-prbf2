@@ -1,66 +1,50 @@
+/*
+PRISM is a PR:BF2 server moderation tool.
+The server sends player updates to all connected clients, but also allows for running queries (commands).
+
+This client aims to provide a robust interface for interacting with the PRISM server,
+whether it be for reading player updates or sending commands to the server.
+*/
 package prism
 
 import (
 	"bufio"
-	"context"
 	"io"
 	"net"
 	"net/textproto"
-	"slices"
 )
 
-type Message interface {
-	Subject() Subject
-}
-
-type RawMessage struct {
-	subject Subject
-	body    []byte
-}
-
-func NewRawMessage(subject Subject, content []byte) *RawMessage {
-	return &RawMessage{
-		subject: subject,
-		body:    content,
-	}
-}
-
-func (m RawMessage) Subject() Subject {
-	return m.subject
-}
-
-func (m RawMessage) Body() []byte {
-	return m.body
-}
-
-func (m RawMessage) MarshalMessage() ([]byte, error) {
-	return m.body, nil
-}
-
-func (m *RawMessage) UnmarshalMessage(content []byte) error {
-	m.body = content[:]
-	return nil
-}
-
 type Client struct {
-	textproto.Pipeline
 	Reader
 	Writer
 
-	Users *Users
+	*broker
 
+	Server   *serverService
+	Gameplay *gameplayService
+	Players  *playersService
+	Users    *usersService
+	Admin    *adminService
+
+	textproto.Pipeline
 	conn io.ReadWriteCloser
 }
 
 func NewClient(conn io.ReadWriteCloser) *Client {
 	c := &Client{
-		Pipeline: textproto.Pipeline{},
 		Reader:   Reader{R: bufio.NewReader(conn)},
 		Writer:   Writer{W: bufio.NewWriter(conn)},
+		Pipeline: textproto.Pipeline{},
 		conn:     conn,
 	}
 
-	c.Users = &Users{c: c}
+	c.Server = &serverService{c: c}
+	c.Gameplay = &gameplayService{c: c}
+	c.Players = &playersService{c: c}
+	c.Users = &usersService{c: c}
+	c.Admin = &adminService{c: c}
+
+	c.broker = newBroker(c)
 
 	return c
 }
@@ -80,62 +64,7 @@ func Dial(addrS string) (*Client, error) {
 }
 
 func (c *Client) Close() error {
+	c.broker.Close()
+
 	return c.conn.Close()
-}
-
-func (c *Client) Command(ctx context.Context, cmd Command, payload any, success Subject) (*RawMessage, error) {
-	content := make([]byte, 0)
-	if payload != nil {
-		var err error
-		content, err = MarshalMessage(payload)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	id := c.Next()
-	c.StartRequest(id)
-	c.StartResponse(id)
-
-	err := c.WriteMessage(cmd, content)
-	c.EndRequest(id)
-	if err != nil {
-		c.EndResponse(id)
-		return nil, err
-	}
-
-	msg, err := c.waitForMessage(ctx, success)
-	c.EndResponse(id)
-	if err != nil {
-		return nil, err
-	}
-
-	return msg, nil
-}
-
-func (c *Client) waitForMessage(ctx context.Context, expected Subject) (*RawMessage, error) {
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			msg, err := c.ReadMessage()
-			if err != nil {
-				return nil, err
-			}
-
-			if slices.Contains(errorSubjects, msg.Subject()) {
-				var errMsg Error
-				err := UnmarshalMessage(msg.Body(), &errMsg)
-				if err != nil {
-					return nil, err
-				}
-				return nil, errMsg
-			}
-
-			if msg.Subject() == expected {
-				return msg, nil
-			}
-		}
-	}
 }

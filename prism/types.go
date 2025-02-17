@@ -8,9 +8,9 @@ const (
 var (
 	SeparatorStart   = []byte{0x01}
 	SeparatorSubject = []byte{0x02}
-	SeparatorField   = []byte{0x03}
+	SeparatorField   = []byte{SeparatorField1}
 	SeparatorEnd     = []byte{0x04}
-	SeparatorNull    = []byte{0x00}
+	SeparatorNull    = []byte{SeparatorNull1}
 	SeparatorBuffer  = []byte{0x0A}
 )
 
@@ -18,8 +18,6 @@ var (
 type Subject string
 
 const (
-	SubjectLogin1              Subject = "login1"
-	SubjectConnected           Subject = "connected"
 	SubjectServerDetails       Subject = "serverdetails"
 	SubjectUpdateServerDetails Subject = "updateserverdetails"
 	SubjectGameplayDetails     Subject = "gameplaydetails"
@@ -34,20 +32,18 @@ const (
 	SubjectPlayerLeave         Subject = "playerleave"
 	SubjectChat                Subject = "chat"
 	SubjectKill                Subject = "kill"
-	SubjectRACommand           Subject = "say"
 )
 
 // Command is the outgoing subject
 type Command = Subject
 
 const (
-	CommandLogin1              Command = "login1"
-	CommandLogin2              Command = "login2"
 	CommandListPlayers         Command = "listplayers"
 	CommandServerDetails       Command = "serverdetails"
 	CommandGameplayDetails     Command = "gameplaydetails"
 	CommandReadMaplist         Command = "readmaplist"
 	CommandAPIAdmin            Command = "apiadmin"
+	CommandRACommand           Command = "say"
 	CommandServerDetailsAlways Command = "serverdetailsalways"
 )
 
