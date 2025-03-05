@@ -80,6 +80,14 @@ type Header struct {
 }
 
 type Player struct {
+	ProfileID string
+	Player    string
+	Team      string
+	Deaths    string
+	Score     string
+	Ping      string
+	Skill     string
+	Bot       bool
 }
 
 type Team struct {

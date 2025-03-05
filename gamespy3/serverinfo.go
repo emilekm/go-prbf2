@@ -43,7 +43,7 @@ func (c *Client) ServerInfoB(ctx context.Context) (*ServerInformation, error) {
 
 	b := make([]byte, 1400)
 	header := make(map[string]string)
-	players := make(map[string][]string)
+	playersData := make(map[string][]string)
 	teams := make(map[string][]string)
 	hasMore := true
 	for hasMore {
@@ -82,7 +82,7 @@ func (c *Client) ServerInfoB(ctx context.Context) (*ServerInformation, error) {
 					return nil, errors.Wrap(err, "failed to unmarshal header")
 				}
 			case 0x01:
-				err = unmarshalPlayers(reader, players)
+				err = unmarshalPlayers(reader, playersData)
 				if err != nil {
 					return nil, errors.Wrap(err, "failed to unmarshal players")
 				}
@@ -101,66 +101,35 @@ func (c *Client) ServerInfoB(ctx context.Context) (*ServerInformation, error) {
 		return nil, err
 	}
 
-	return &ServerInformation{
-		Header: h,
-	}, nil
-}
+	players := make([]Player, len(playersData["pid_"]))
 
-func (c *Client) ServerInfoC(ctx context.Context, fields []FieldType) ([]string, error) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		deadline = time.Now().Add(1 * time.Second)
-	}
-
-	c.conn.SetReadDeadline(deadline)
-
-	t := timestamp()
-
-	fieldsQuery := []byte{}
-	for _, f := range fields {
-		fieldsQuery = append(fieldsQuery, byte(f))
-	}
-
-	query := bytes.Join([][]byte{
-		{0xFE, 0xFD, 0x00},
-		t,
-		{byte(len(fieldsQuery))},
-		fieldsQuery,
-		{0x00, 0x00},
-	}, []byte{})
-
-	_, err := c.conn.Write(query)
-	if err != nil {
-		return nil, err
-	}
-
-	b := make([]byte, 1400)
-
-	read, _, _, _, err := c.conn.ReadMsgUDP(b, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp := make([]string, len(fields))
-
-	const headerSize = 5
-	buf := bytes.NewBuffer(b[headerSize:read])
-	for i := range fields {
-		str, err := buf.ReadString(0x00)
-		if err != nil {
-			if err != io.EOF {
-				return nil, err
+	for k, v := range playersData {
+		for i, p := range v {
+			switch k {
+			case "pid_":
+				players[i].ProfileID = p
+			case "skill_":
+				players[i].Skill = p
+			case "AIBot_":
+				players[i].Bot = p == "1"
+			case "team_":
+				players[i].Team = p
+			case "deaths_":
+				players[i].Deaths = p
+			case "score_":
+				players[i].Score = p
+			case "ping_":
+				players[i].Ping = p
+			case "player_":
+				players[i].Player = p
 			}
-			resp[i] = str
-			break
 		}
-		resp[i] = str[:len(str)-1]
 	}
 
-	return resp, nil
+	return &ServerInformation{
+		Header:  h,
+		Players: players,
+	}, nil
 }
 
 func unmarshalHeader(b *bytes.Reader, header map[string]string) error {
@@ -204,6 +173,7 @@ func unmarshalHeader(b *bytes.Reader, header map[string]string) error {
 
 func unmarshalPlayers(b *bytes.Reader, players map[string][]string) error {
 	for b.Len() > 0 {
+
 		var key strings.Builder
 
 		for {
@@ -224,8 +194,6 @@ func unmarshalPlayers(b *bytes.Reader, players map[string][]string) error {
 			}
 		}
 
-		println(key.String())
-
 		values := make([]strings.Builder, 0)
 		var currentValue strings.Builder
 		for {
@@ -244,8 +212,10 @@ func unmarshalPlayers(b *bytes.Reader, players map[string][]string) error {
 					break
 				}
 
-				b.UnreadByte()
-				println(currentValue.String())
+				err = b.UnreadByte()
+				if err != nil {
+					return err
+				}
 
 				values = append(values, currentValue)
 				currentValue.Reset()
@@ -258,14 +228,20 @@ func unmarshalPlayers(b *bytes.Reader, players map[string][]string) error {
 			}
 		}
 
-		players[key.String()] = make([]string, len(values))
-		for i, v := range values {
-			players[key.String()][i] = v.String()
+		if _, ok := players[key.String()]; !ok {
+			players[key.String()] = make([]string, 0)
+		}
+
+		for _, v := range values {
+			players[key.String()] = append(players[key.String()], v.String())
 		}
 
 		end := make([]byte, 2)
 		read, err := b.Read(end)
 		if err != nil {
+			if err == io.EOF {
+				break
+			}
 			return err
 		}
 
@@ -282,6 +258,13 @@ func unmarshalPlayers(b *bytes.Reader, players map[string][]string) error {
 }
 
 func unmarshalTeam(b *bytes.Reader, teams map[string][]string) error {
+	buf := make([]byte, 512)
+	read, err := b.Read(buf)
+	if err != nil {
+		return err
+	}
+
+	println(hex.Dump(buf[:read]))
 	return nil
 }
 
