@@ -114,10 +114,10 @@ func (b *broker) Unsubscribe(subscriber Subscriber) {
 		return
 	}
 
-	for _, subscribers := range b.subjectSubscribers {
+	for subject, subscribers := range b.subjectSubscribers {
 		if i := slices.Index(subscribers, subscriber); i != -1 {
 			close(subscriber)
-			subscribers = slices.Delete(b.subscribers, i, i+1)
+			b.subjectSubscribers[subject] = slices.Delete(b.subscribers, i, i+1)
 		}
 	}
 }
