@@ -157,7 +157,7 @@ func (s *adminService) RACommand(ctx context.Context, command string) (*RAComman
 	})
 	if err != nil {
 		var msgErr Error
-		if errors.As(err, &msgErr) {
+		if errors.As(err, &msgErr) || resp == nil {
 			return nil, err
 		}
 		var msg RACommandOutcome
