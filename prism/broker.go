@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"slices"
 	"sync"
 	"time"
 )
@@ -14,8 +13,8 @@ type Subscriber chan *Message
 type broker struct {
 	client *Client
 
-	subjectSubscribers map[Subject][]Subscriber
-	subscribers        []Subscriber
+	subjectSubscribers map[Subject]map[Subscriber]struct{}
+	subscribers        map[Subscriber]struct{}
 
 	mutex  sync.Mutex
 	cancel context.CancelFunc
@@ -24,8 +23,8 @@ type broker struct {
 func newBroker(client *Client) *broker {
 	return &broker{
 		client:             client,
-		subjectSubscribers: make(map[Subject][]Subscriber),
-		subscribers:        make([]Subscriber, 0),
+		subjectSubscribers: make(map[Subject]map[Subscriber]struct{}),
+		subscribers:        make(map[Subscriber]struct{}),
 	}
 }
 
@@ -82,10 +81,10 @@ func (b *broker) addSubscriberWithSubject(subscriber Subscriber, subject Subject
 
 	subscribers, ok := b.subjectSubscribers[subject]
 	if !ok {
-		subscribers = make([]Subscriber, 0)
+		subscribers = make(map[Subscriber]struct{})
 	}
 
-	subscribers = append(subscribers, subscriber)
+	subscribers[subscriber] = struct{}{}
 	b.subjectSubscribers[subject] = subscribers
 }
 
@@ -93,7 +92,7 @@ func (b *broker) addSubscriber(subscriber Subscriber) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	b.subscribers = append(b.subscribers, subscriber)
+	b.subscribers[subscriber] = struct{}{}
 }
 
 // Unsubscribe removes a subscriber from the broker.
@@ -108,16 +107,17 @@ func (b *broker) Unsubscribe(subscriber Subscriber) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	if i := slices.Index(b.subscribers, subscriber); i != -1 {
+	if _, ok := b.subscribers[subscriber]; ok {
 		close(subscriber)
-		b.subscribers = slices.Delete(b.subscribers, i, i+1)
+		delete(b.subscribers, subscriber)
 		return
 	}
 
 	for subject, subscribers := range b.subjectSubscribers {
-		if i := slices.Index(subscribers, subscriber); i != -1 {
+		if _, ok := subscribers[subscriber]; ok {
 			close(subscriber)
-			b.subjectSubscribers[subject] = slices.Delete(b.subscribers, i, i+1)
+			delete(subscribers, subscriber)
+			b.subjectSubscribers[subject] = subscribers
 		}
 	}
 }
@@ -138,11 +138,11 @@ func (b *broker) publish(message *Message) {
 		}
 	}
 
-	for _, sub := range b.subjectSubscribers[message.Subject()] {
+	for sub := range b.subjectSubscribers[message.Subject()] {
 		publishFn(sub)
 	}
 
-	for _, sub := range b.subscribers {
+	for sub := range b.subscribers {
 		publishFn(sub)
 	}
 }
@@ -152,13 +152,13 @@ func (b *broker) Close() {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	for _, subscriber := range b.subscribers {
-		close(subscriber)
+	for sub := range b.subscribers {
+		close(sub)
 	}
 
 	for _, subscribers := range b.subjectSubscribers {
-		for _, subscriber := range subscribers {
-			close(subscriber)
+		for sub := range subscribers {
+			close(sub)
 		}
 	}
 
