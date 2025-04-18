@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 )
@@ -97,30 +98,27 @@ func (b *broker) addSubscriber(subscriber Subscriber) {
 
 // Unsubscribe removes a subscriber from the broker.
 func (b *broker) Unsubscribe(subscriber Subscriber) {
+	defer func() {
+		if len(b.subscribers) == 0 && len(b.subjectSubscribers) == 0 {
+			b.cancel()
+			b.cancel = nil
+		}
+	}()
+
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	for i, sub := range b.subscribers {
-		if sub == subscriber {
-			close(sub)
-			b.subscribers = append(b.subscribers[:i], b.subscribers[i+1:]...)
-			return
-		}
+	if i := slices.Index(b.subscribers, subscriber); i != -1 {
+		close(subscriber)
+		b.subscribers = slices.Delete(b.subscribers, i, i+1)
+		return
 	}
 
-	for subject, subscribers := range b.subjectSubscribers {
-		for i, sub := range subscribers {
-			if sub == subscriber {
-				close(sub)
-				b.subjectSubscribers[subject] = append(subscribers[:i], subscribers[i+1:]...)
-				return
-			}
+	for _, subscribers := range b.subjectSubscribers {
+		if i := slices.Index(subscribers, subscriber); i != -1 {
+			close(subscriber)
+			subscribers = slices.Delete(b.subscribers, i, i+1)
 		}
-	}
-
-	if len(b.subscribers) == 0 && len(b.subjectSubscribers) == 0 {
-		b.cancel()
-		b.cancel = nil
 	}
 }
 
@@ -162,5 +160,10 @@ func (b *broker) Close() {
 		for _, subscriber := range subscribers {
 			close(subscriber)
 		}
+	}
+
+	if b.cancel != nil {
+		b.cancel()
+		b.cancel = nil
 	}
 }
