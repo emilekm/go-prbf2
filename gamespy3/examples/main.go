@@ -22,12 +22,19 @@ func main() {
 func run() error {
 	ctx := context.Background()
 
-	conn, err := net.Dial("udp", ipport)
+	serverAddr, err := net.ResolveUDPAddr("udp", ipport)
 	if err != nil {
 		return err
 	}
 
-	status, err := gamespy3.Status(ctx, conn)
+	udp, err := net.DialUDP("udp", nil, serverAddr)
+	if err != nil {
+		return err
+	}
+
+	client := gamespy3.New(udp)
+
+	status, err := client.ServerInfoB(ctx)
 	if err != nil {
 		return err
 	}
