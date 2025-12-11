@@ -56,11 +56,13 @@ func NewDemoReaderFromFile(file string) (DemoReader, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer reader.Close()
 
 	zReader, err := zlib.NewReader(reader)
 	if err != nil {
 		return nil, err
 	}
+	defer zReader.Close()
 
 	buf, err := io.ReadAll(zReader)
 	if err != nil {
