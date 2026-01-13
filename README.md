@@ -8,6 +8,11 @@ BF2Demo files are produced by the game server and contain binary representation 
 
 The library only reads the header of the whole file.
 
+## logs
+
+PR servers produce log files in readable and structured text format.
+The library allows for parsing log files into structured messages.
+
 ## prdemo
 
 PRDemo files are binary files composed of structured messages produced by game server.
