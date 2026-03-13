@@ -1,6 +1,9 @@
 package prism
 
-import "context"
+import (
+	"context"
+	"io"
+)
 
 type Request struct {
 	Message         *Message
@@ -49,7 +52,10 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case message := <-channels[SubjectCriticalError]:
+	case message, ok := <-channels[SubjectCriticalError]:
+		if !ok {
+			return nil, io.EOF
+		}
 		var errMsg Error
 		err = Unmarshal(message.body, &errMsg)
 		if err != nil {
@@ -59,7 +65,10 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 		}
 
 		return nil, errMsg
-	case message := <-channels[SubjectError]:
+	case message, ok := <-channels[SubjectError]:
+		if !ok {
+			return nil, io.EOF
+		}
 		var errMsg Error
 		err = Unmarshal(message.body, &errMsg)
 		if err != nil {
@@ -69,7 +78,10 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 		}
 
 		return nil, errMsg
-	case message := <-channels[req.ExpectedSubject]:
+	case message, ok := <-channels[req.ExpectedSubject]:
+		if !ok {
+			return nil, io.EOF
+		}
 		return &Response{
 			Message: message,
 		}, nil

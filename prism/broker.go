@@ -65,8 +65,9 @@ func (b *broker) start() {
 			default:
 				msg, err := b.client.ReadMessage()
 				if err != nil {
-					slog.Error("Received error when reading message in broker", "err", err)
-					continue
+					slog.Error("Connection lost", "err", err)
+					b.Close()
+					return
 				}
 
 				b.publish(msg)
