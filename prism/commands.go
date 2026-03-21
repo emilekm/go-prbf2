@@ -16,17 +16,17 @@ type Response struct {
 }
 
 func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
-	id := c.Next()
-	c.StartRequest(id)
+	id := c.pipeline.Next()
+	c.pipeline.StartRequest(id)
 
 	err := c.WriteMessage(req.Message)
 	if err != nil {
-		c.EndRequest(id)
+		c.pipeline.EndRequest(id)
 		return nil, err
 	}
 
-	c.StartResponse(id)
-	c.EndRequest(id)
+	c.pipeline.StartResponse(id)
+	c.pipeline.EndRequest(id)
 
 	// TODO: check if case with empty channel is valid
 	channels := make(map[Subject]Subscriber)
@@ -43,7 +43,7 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 		defer c.Unsubscribe(channels[SubjectCriticalError])
 	}
 
-	defer c.EndResponse(id)
+	defer c.pipeline.EndResponse(id)
 
 	if len(channels) == 0 {
 		return nil, nil

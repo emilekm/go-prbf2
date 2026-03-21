@@ -26,8 +26,8 @@ type Client struct {
 	Users    *usersService
 	Admin    *adminService
 
-	textproto.Pipeline
-	conn io.ReadWriteCloser
+	pipeline textproto.Pipeline
+	conn     io.ReadWriteCloser
 }
 
 func (c *Client) ReadMessage() (*Message, error) {
@@ -42,7 +42,7 @@ func NewClient(conn io.ReadWriteCloser) *Client {
 	c := &Client{
 		reader:   Reader{r: bufio.NewReader(conn)},
 		writer:   Writer{w: bufio.NewWriter(conn)},
-		Pipeline: textproto.Pipeline{},
+		pipeline: textproto.Pipeline{},
 		conn:     conn,
 	}
 
