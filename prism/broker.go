@@ -129,12 +129,11 @@ func (b *broker) publish(message *Message) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	timer := time.NewTimer(time.Second)
-
 	publishFn := func(sub Subscriber) {
-		timer.Reset(time.Second)
+		timer := time.NewTimer(time.Second)
 		select {
 		case sub <- message:
+			timer.Stop()
 		case <-timer.C:
 			slog.Warn("subscriber slow, unsubscribing")
 			b.unsubscribeLocked(sub)
