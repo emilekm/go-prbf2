@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 )
@@ -51,7 +52,7 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 		if !ignoreField(fieldValue) {
 			fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
 			if err != nil {
-				return err
+				return fmt.Errorf("unmarshal bool from %q: %w", fieldValue, err)
 			}
 			val.SetBool(fieldValueInt64 != 0)
 		}
@@ -64,7 +65,7 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 		if !ignoreField(fieldValue) {
 			fieldValueInt64, err := strconv.ParseInt(fieldValue, 10, 64)
 			if err != nil {
-				return err
+				return fmt.Errorf("unmarshal %s from %q: %w", val.Type(), fieldValue, err)
 			}
 			val.SetInt(fieldValueInt64)
 		}
@@ -77,7 +78,7 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 		if !ignoreField(fieldValue) {
 			fieldValueUint64, err := strconv.ParseUint(fieldValue, 10, 64)
 			if err != nil {
-				return err
+				return fmt.Errorf("unmarshal %s from %q: %w", val.Type(), fieldValue, err)
 			}
 			val.SetUint(fieldValueUint64)
 		}
@@ -90,7 +91,7 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 		if !ignoreField(fieldValue) {
 			fieldValueFloat64, err := strconv.ParseFloat(fieldValue, 64)
 			if err != nil {
-				return err
+				return fmt.Errorf("unmarshal %s from %q: %w", val.Type(), fieldValue, err)
 			}
 			val.SetFloat(fieldValueFloat64)
 		}
@@ -126,14 +127,14 @@ func unmarshalFields(val reflect.Value, fields *bufio.Scanner) error {
 		for i := 0; i < val.Len(); i += 1 {
 			err := unmarshalFields(val.Index(i), fields)
 			if err != nil {
-				return err
+				return fmt.Errorf("index %d: %w", i, err)
 			}
 		}
 	case reflect.Struct:
 		for i := 0; i < val.NumField(); i += 1 {
 			err := unmarshalFields(val.Field(i), fields)
 			if err != nil {
-				return err
+				return fmt.Errorf("field %s: %w", val.Type().Field(i).Name, err)
 			}
 		}
 	case reflect.Ptr:
