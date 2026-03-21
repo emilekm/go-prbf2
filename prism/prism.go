@@ -32,8 +32,8 @@ type Client struct {
 
 func NewClient(conn io.ReadWriteCloser) *Client {
 	c := &Client{
-		Reader:   Reader{R: bufio.NewReader(conn)},
-		Writer:   Writer{W: bufio.NewWriter(conn)},
+		Reader:   Reader{r: bufio.NewReader(conn)},
+		Writer:   Writer{w: bufio.NewWriter(conn)},
 		Pipeline: textproto.Pipeline{},
 		conn:     conn,
 	}

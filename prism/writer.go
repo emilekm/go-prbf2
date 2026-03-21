@@ -6,13 +6,13 @@ import (
 )
 
 type Writer struct {
-	W *bufio.Writer
+	w *bufio.Writer
 
 	mutex sync.Mutex
 }
 
 func NewWriter(w *bufio.Writer) *Writer {
-	return &Writer{W: w}
+	return &Writer{w: w}
 }
 
 func (w *Writer) WriteMessage(msg *Message) error {
@@ -28,15 +28,15 @@ func (w *Writer) WriteMessageBytes(content []byte) error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	_, err := w.W.Write(content)
+	_, err := w.w.Write(content)
 	if err != nil {
 		return err
 	}
 
-	_, err = w.W.Write(SeparatorNull)
+	_, err = w.w.Write(SeparatorNull)
 	if err != nil {
 		return err
 	}
 
-	return w.W.Flush()
+	return w.w.Flush()
 }

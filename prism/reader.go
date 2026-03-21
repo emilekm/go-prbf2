@@ -5,11 +5,11 @@ import (
 )
 
 type Reader struct {
-	R *bufio.Reader
+	r *bufio.Reader
 }
 
 func NewReader(r *bufio.Reader) *Reader {
-	return &Reader{R: r}
+	return &Reader{r: r}
 }
 
 func (r *Reader) ReadMessage() (*Message, error) {
@@ -28,5 +28,5 @@ func (r *Reader) ReadMessage() (*Message, error) {
 }
 
 func (r *Reader) ReadMessageBytes() ([]byte, error) {
-	return r.R.ReadBytes(SeparatorNull1)
+	return r.r.ReadBytes(SeparatorNull1)
 }
