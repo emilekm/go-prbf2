@@ -2,7 +2,6 @@ package prism
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -137,7 +136,7 @@ func (b *broker) publish(message *Message) {
 		select {
 		case sub <- message:
 		case <-timer.C:
-			fmt.Printf("Subscriber slow. Unsubscribing\n")
+			slog.Warn("subscriber slow, unsubscribing")
 			b.unsubscribeLocked(sub)
 		}
 	}
