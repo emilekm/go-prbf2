@@ -9,10 +9,10 @@ type ErrorCode int
 const (
 	ErrorCodeUnknown         ErrorCode = iota
 	ErrorCodeUnauthenticated ErrorCode = iota + 3000
-	ErrorCodeIncorectUsernameOrPassword
-	ErrorCodeInssuficientPermissions
+	ErrorCodeIncorrectUsernameOrPassword
+	ErrorCodeInsufficientPermissions
 	ErrorCodeAccountExists
-	ErrorCodeOwnAccont
+	ErrorCodeOwnAccount
 	ErrorCodeSuperUserLastAccount
 	ErrorCodeDeletedUser
 	ErrorCodeServerVersion
