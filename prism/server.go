@@ -77,7 +77,7 @@ func (s *gameplayService) DetailsUpdates(ctx context.Context) (Subscriber, error
 		}
 	}
 
-	sub := s.c.Subscribe(SubjectUpdateServerDetails)
+	sub := s.c.Subscribe(SubjectGameplayDetails)
 	return sub, nil
 }
 
