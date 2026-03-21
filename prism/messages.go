@@ -153,6 +153,9 @@ func (g *GameplayDetails) UnmarshalMessage(content []byte) error {
 
 	for _, cp := range controlPoints {
 		split := bytes.SplitN(cp, []byte(":"), 2)
+		if len(split) < 2 || len(split[1]) == 0 {
+			continue
+		}
 		g.ControlPoints = append(g.ControlPoints, ControlPoint{
 			ID:   string(split[0]),
 			Team: int(split[1][0]),
@@ -164,6 +167,9 @@ func (g *GameplayDetails) UnmarshalMessage(content []byte) error {
 
 	for _, fob := range fobs {
 		split := bytes.SplitN(fob, []byte(":"), 2)
+		if len(split) < 2 || len(split[1]) == 0 {
+			continue
+		}
 		g.Fobs = append(g.Fobs, Fob{
 			Position: string(split[0]),
 			Team:     int(split[1][0]),
@@ -175,6 +181,9 @@ func (g *GameplayDetails) UnmarshalMessage(content []byte) error {
 
 	for _, rally := range rallies {
 		split := bytes.SplitN(rally, []byte(":"), 3)
+		if len(split) < 3 || len(split[1]) == 0 || len(split[2]) == 0 {
+			continue
+		}
 		g.Rallies = append(g.Rallies, Rally{
 			Position: string(split[0]),
 			Team:     int(split[1][0]),
