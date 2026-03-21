@@ -42,16 +42,13 @@ func (c *Client) Login(ctx context.Context, username, password string) error {
 		return fmt.Errorf("login1: %w", err)
 	}
 
-	challengeDigestHash, err := prepareChallengeDigest(
+	challengeDigestHash := prepareChallengeDigest(
 		username,
 		password,
 		login1Response.Hash,
 		cck,
 		login1Response.ServerChallenge,
 	)
-	if err != nil {
-		return fmt.Errorf("login2: challengedigest: %w", err)
-	}
 
 	return c.login2(ctx, challengeDigestHash)
 }
@@ -130,12 +127,12 @@ func bytesHash(b ...[]byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func prepareChallengeDigest(username, password string, salt, clientChallenge, serverChallenge []byte) (string, error) {
+func prepareChallengeDigest(username, password string, salt, clientChallenge, serverChallenge []byte) string {
 	passwordHash := stringHash(password)
 
 	saltedPasswordHash := bytesHash(salt, SeparatorStart, []byte(passwordHash))
 
-	challengeDigestHash := bytesHash(
+	return bytesHash(
 		bytes.Join([][]byte{
 			[]byte(username),
 			clientChallenge,
@@ -143,6 +140,4 @@ func prepareChallengeDigest(username, password string, salt, clientChallenge, se
 			[]byte(saltedPasswordHash),
 		}, SeparatorField),
 	)
-
-	return challengeDigestHash, nil
 }
