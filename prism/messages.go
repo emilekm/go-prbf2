@@ -272,7 +272,8 @@ func (p *UpdatePlayers) UnmarshalMessage(content []byte) error {
 
 	for _, message := range messages {
 		fieldsNum := bytes.Count(message, SeparatorField) + 1
-		if fieldsNum == fullPlayerFieldsCount {
+		switch fieldsNum {
+		case fullPlayerFieldsCount:
 			var player FullPlayer
 			err := Unmarshal(message, &player)
 			if err != nil {
@@ -280,7 +281,7 @@ func (p *UpdatePlayers) UnmarshalMessage(content []byte) error {
 			}
 
 			players = append(players, UpdatePlayer{Full: &player})
-		} else if fieldsNum == updatePlayerFieldsCount {
+		case updatePlayerFieldsCount:
 			var player Player
 			err := Unmarshal(message, &player)
 			if err != nil {
