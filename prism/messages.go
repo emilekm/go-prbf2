@@ -100,7 +100,7 @@ type ServerDetails struct {
 	IP          string
 	Port        string
 	StartTime   float64
-	RoundWarmup int
+	RoundWarmup float64
 	RoundLength int
 	MaxPlayers  int
 
