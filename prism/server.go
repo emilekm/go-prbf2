@@ -32,7 +32,7 @@ func (s *serverService) Details(ctx context.Context) (*ServerDetails, error) {
 	return &serverDetails, nil
 }
 
-func (s *serverService) DetailsUpdates(ctx context.Context) (Subscriber, error) {
+func (s *serverService) DetailsUpdates(ctx context.Context) (*Subscriber, error) {
 	if !s.started {
 		_, err := s.Details(ctx)
 		if err != nil {
@@ -69,7 +69,7 @@ func (s *gameplayService) Details(ctx context.Context) (*GameplayDetails, error)
 	return &gameplayDetails, nil
 }
 
-func (s *gameplayService) DetailsUpdates(ctx context.Context) (Subscriber, error) {
+func (s *gameplayService) DetailsUpdates(ctx context.Context) (*Subscriber, error) {
 	if !s.started {
 		_, err := s.Details(ctx)
 		if err != nil {
@@ -110,7 +110,7 @@ func (s *playersService) List(ctx context.Context) (Players, error) {
 	return players, nil
 }
 
-func (s *playersService) ListUpdates(ctx context.Context) (Subscriber, error) {
+func (s *playersService) ListUpdates(ctx context.Context) (*Subscriber, error) {
 	if !s.started {
 		_, err := s.List(ctx)
 		if err != nil {
@@ -122,7 +122,7 @@ func (s *playersService) ListUpdates(ctx context.Context) (Subscriber, error) {
 	return sub, nil
 }
 
-func (s *playersService) PlayerLeaveUpdates(ctx context.Context) (Subscriber, error) {
+func (s *playersService) PlayerLeaveUpdates(ctx context.Context) (*Subscriber, error) {
 	if !s.started {
 		_, err := s.List(ctx)
 		if err != nil {

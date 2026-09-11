@@ -29,7 +29,7 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 	c.pipeline.EndRequest(id)
 
 	// TODO: check if case with empty channel is valid
-	channels := make(map[Subject]Subscriber)
+	channels := make(map[Subject]*Subscriber)
 
 	if req.ExpectedSubject != Subject("") {
 		channels[req.ExpectedSubject] = c.Subscribe(req.ExpectedSubject)
@@ -52,7 +52,7 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case message, ok := <-channels[SubjectCriticalError]:
+	case message, ok := <-channels[SubjectCriticalError].C:
 		if !ok {
 			return nil, io.EOF
 		}
@@ -65,7 +65,7 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 		}
 
 		return nil, errMsg
-	case message, ok := <-channels[SubjectError]:
+	case message, ok := <-channels[SubjectError].C:
 		if !ok {
 			return nil, io.EOF
 		}
@@ -78,7 +78,7 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 		}
 
 		return nil, errMsg
-	case message, ok := <-channels[req.ExpectedSubject]:
+	case message, ok := <-channels[req.ExpectedSubject].C:
 		if !ok {
 			return nil, io.EOF
 		}
