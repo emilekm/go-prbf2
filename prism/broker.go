@@ -2,6 +2,7 @@ package prism
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"sync"
 	"time"
@@ -30,11 +31,24 @@ func newSubscriber(b *broker) *Subscriber {
 	}
 }
 
+// replyResult is the outcome delivered to a one-shot Send waiter.
+type replyResult struct {
+	subject Subject
+	message *Message
+	err     error
+}
+
+type replyWaiter struct {
+	subjects map[Subject]struct{}
+	result   chan replyResult
+}
+
 type broker struct {
 	client *Client
 
 	subjectSubscribers map[Subject]map[*Subscriber]struct{}
 	subscribers        map[*Subscriber]struct{}
+	waiter             *replyWaiter
 
 	mutex  sync.Mutex
 	cancel context.CancelFunc
@@ -77,6 +91,11 @@ func (b *broker) startLocked() {
 				msg, err := b.client.ReadMessage()
 				if err != nil {
 					slog.Error("Connection lost", "err", err)
+
+					b.mutex.Lock()
+					b.failWaiterLocked(err)
+					b.mutex.Unlock()
+
 					b.Close()
 					return
 				}
@@ -149,9 +168,76 @@ func (b *broker) Unsubscribe(subscriber *Subscriber) {
 	}
 }
 
+// beginWait registers a one-shot waiter for the given subjects and ensures
+// the read loop is running. Every call must be paired with endWait, typically
+// via defer. Only one waiter can be active at a time; Client.Send relies on
+// textproto.Pipeline to already guarantee this.
+func (b *broker) beginWait(subjects ...Subject) *replyWaiter {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	w := &replyWaiter{
+		subjects: make(map[Subject]struct{}, len(subjects)),
+		result:   make(chan replyResult, 1),
+	}
+	for _, subject := range subjects {
+		w.subjects[subject] = struct{}{}
+	}
+
+	b.waiter = w
+
+	if b.cancel == nil {
+		b.startLocked()
+	}
+
+	return w
+}
+
+// endWait detaches w if it is still the active waiter.
+func (b *broker) endWait(w *replyWaiter) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	if b.waiter == w {
+		b.waiter = nil
+	}
+}
+
+// deliverToWaiterLocked hands message to the active waiter if it wants this
+// subject. Must be called with b.mutex held.
+func (b *broker) deliverToWaiterLocked(message *Message) {
+	if b.waiter == nil {
+		return
+	}
+
+	if _, ok := b.waiter.subjects[message.Subject()]; !ok {
+		return
+	}
+
+	w := b.waiter
+	b.waiter = nil
+
+	w.result <- replyResult{subject: message.Subject(), message: message}
+}
+
+// failWaiterLocked aborts the active waiter with err. Must be called with
+// b.mutex held.
+func (b *broker) failWaiterLocked(err error) {
+	if b.waiter == nil {
+		return
+	}
+
+	w := b.waiter
+	b.waiter = nil
+
+	w.result <- replyResult{err: err}
+}
+
 func (b *broker) publish(message *Message) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
+
+	b.deliverToWaiterLocked(message)
 
 	publishFn := func(sub *Subscriber) {
 		timer := time.NewTimer(time.Second)
@@ -189,6 +275,8 @@ func (b *broker) Close() {
 		}
 	}
 	b.subjectSubscribers = make(map[Subject]map[*Subscriber]struct{})
+
+	b.failWaiterLocked(io.EOF)
 
 	if b.cancel != nil {
 		b.cancel()

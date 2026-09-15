@@ -2,7 +2,6 @@ package prism
 
 import (
 	"context"
-	"io"
 )
 
 type Request struct {
@@ -27,63 +26,40 @@ func (c *Client) Send(ctx context.Context, req *Request) (*Response, error) {
 
 	c.pipeline.StartResponse(id)
 	c.pipeline.EndRequest(id)
-
-	// TODO: check if case with empty channel is valid
-	channels := make(map[Subject]*Subscriber)
-
-	if req.ExpectedSubject != Subject("") {
-		channels[req.ExpectedSubject] = c.Subscribe(req.ExpectedSubject)
-		defer c.Unsubscribe(channels[req.ExpectedSubject])
-	}
-
-	if !req.IgnoreError {
-		channels[SubjectError] = c.Subscribe(SubjectError)
-		channels[SubjectCriticalError] = c.Subscribe(SubjectCriticalError)
-		defer c.Unsubscribe(channels[SubjectError])
-		defer c.Unsubscribe(channels[SubjectCriticalError])
-	}
-
 	defer c.pipeline.EndResponse(id)
 
-	if len(channels) == 0 {
+	var subjects []Subject
+	if req.ExpectedSubject != Subject("") {
+		subjects = append(subjects, req.ExpectedSubject)
+	}
+	if !req.IgnoreError {
+		subjects = append(subjects, SubjectError, SubjectCriticalError)
+	}
+
+	if len(subjects) == 0 {
 		return nil, nil
 	}
+
+	waiter := c.beginWait(subjects...)
+	defer c.endWait(waiter)
 
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case message, ok := <-channels[SubjectCriticalError].C:
-		if !ok {
-			return nil, io.EOF
-		}
-		var errMsg Error
-		err = Unmarshal(message.body, &errMsg)
-		if err != nil {
-			return &Response{
-				Message: message,
-			}, err
+	case result := <-waiter.result:
+		if result.err != nil {
+			return nil, result.err
 		}
 
-		return nil, errMsg
-	case message, ok := <-channels[SubjectError].C:
-		if !ok {
-			return nil, io.EOF
+		switch result.subject {
+		case SubjectError, SubjectCriticalError:
+			var errMsg Error
+			if err := Unmarshal(result.message.body, &errMsg); err != nil {
+				return &Response{Message: result.message}, err
+			}
+			return nil, errMsg
+		default:
+			return &Response{Message: result.message}, nil
 		}
-		var errMsg Error
-		err = Unmarshal(message.body, &errMsg)
-		if err != nil {
-			return &Response{
-				Message: message,
-			}, err
-		}
-
-		return nil, errMsg
-	case message, ok := <-channels[req.ExpectedSubject].C:
-		if !ok {
-			return nil, io.EOF
-		}
-		return &Response{
-			Message: message,
-		}, nil
 	}
 }
