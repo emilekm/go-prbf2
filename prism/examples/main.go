@@ -53,7 +53,7 @@ func run() error {
 
 	sub := client.SubscribeAll()
 
-	for msg := range sub {
+	for msg := range sub.C {
 		fmt.Printf("Message: %+v\n", msg.Subject())
 
 		switch msg.Subject() {
