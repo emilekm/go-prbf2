@@ -15,8 +15,8 @@ type ServerDetails struct {
 	RoundLength     uint16
 	BriefingTime    uint16
 	Map             Map
-	BluforTeam      string
-	OpforTeam       string
+	Team1Name       string
+	Team2Name       string
 	StartTime       uint32
 	Tickets1        uint16
 	Tickets2        uint16
