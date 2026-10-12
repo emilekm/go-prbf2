@@ -15,6 +15,7 @@ const (
 	StatusLegacy
 	StatusWhitelisted
 	StatusVacBanned
+	StatusLegacyVacBanned
 )
 
 type JoinEntry struct {
@@ -62,6 +63,8 @@ func ParseJoinEntry(line string) (*JoinEntry, error) {
 			status = StatusWhitelisted
 		case "(VAC BANNED)":
 			status = StatusVacBanned
+		case "(LEGACY)(VAC BANNED)":
+			status = StatusLegacyVacBanned
 		}
 	}
 

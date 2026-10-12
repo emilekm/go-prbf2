@@ -60,6 +60,18 @@ func TestParseJoinEntry(t *testing.T) {
 				Status:     StatusVacBanned,
 			},
 		},
+		{
+			input: "[2026-01-09 23:02:08]	30f693875976497eafebe93691658449	2	 Username	2020-05-01	127.0.0.1	(LEGACY)(VAC BANNED)",
+			output: &JoinEntry{
+				Timestamp:  time.Date(2026, 1, 9, 23, 2, 8, 0, time.UTC),
+				KeyHash:    "30f693875976497eafebe93691658449",
+				TrustLevel: 2,
+				Name:       " Username",
+				CreatedAt:  time.Date(2020, 5, 1, 0, 0, 0, 0, time.UTC),
+				IP:         net.ParseIP("127.0.0.1"),
+				Status:     StatusLegacyVacBanned,
+			},
+		},
 	}
 
 	for _, test := range tests {
