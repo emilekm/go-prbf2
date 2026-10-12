@@ -34,7 +34,10 @@ func ParseAdminEntry(line string, dateFormat string) (*AdminEntry, error) {
 		return nil, err
 	}
 
-	rest := line[closeBracket+2:]
+	rest, ok := strings.CutPrefix(line[closeBracket+1:], " ")
+	if !ok {
+		return nil, errors.New("invalid format: expected ' ' after timestamp")
+	}
 
 	performedByIdx := strings.Index(rest, " performed by '")
 	if performedByIdx == -1 {
@@ -45,30 +48,18 @@ func ParseAdminEntry(line string, dateFormat string) (*AdminEntry, error) {
 
 	rest = rest[performedByIdx+15:]
 
-	adminEnd := strings.Index(rest, "'")
-	if adminEnd == -1 {
-		return nil, errors.New("invalid format: missing closing quote for admin")
-	}
-
-	admin := rest[:adminEnd]
-	rest = rest[adminEnd+1:]
-
-	var target, details string
-
-	if strings.HasPrefix(rest, " on '") {
-		rest = rest[5:]
-		targetEnd := strings.Index(rest, "'")
-		if targetEnd == -1 {
-			return nil, errors.New("invalid format: missing closing quote for target")
-		}
-		target = rest[:targetEnd]
-		rest = rest[targetEnd+1:]
-	}
-
-	if strings.HasPrefix(rest, ": ") {
-		details = rest[2:]
-	} else {
+	detailsIdx := strings.Index(rest, "': ")
+	if detailsIdx == -1 {
 		return nil, errors.New("invalid format: missing ': ' before details")
+	}
+
+	admin := rest[:detailsIdx]
+	details := rest[detailsIdx+3:]
+
+	var target string
+	if onIdx := strings.Index(admin, "' on '"); onIdx != -1 {
+		target = admin[onIdx+6:]
+		admin = admin[:onIdx]
 	}
 
 	return &AdminEntry{

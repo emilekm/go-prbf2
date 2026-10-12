@@ -42,6 +42,36 @@ func TestParseAdminEntry(t *testing.T) {
 				Details:   "afk",
 			},
 		},
+		{
+			input: "[2026_01_09_23_26_40] !SETNEXT        performed by 'TAG O'Brien': Sbeneh Outskirts (Insurgency, Std)",
+			output: &AdminEntry{
+				Timestamp: time.Date(2026, 1, 9, 23, 26, 40, 0, time.UTC),
+				Action:    "!SETNEXT",
+				Issuer:    "TAG O'Brien",
+				Target:    "",
+				Details:   "Sbeneh Outskirts (Insurgency, Std)",
+			},
+		},
+		{
+			input: "[2026_01_09_23_26_40] !REPORTP        performed by 'TAG O'Brien' on ' D'Artagnan': afk",
+			output: &AdminEntry{
+				Timestamp: time.Date(2026, 1, 9, 23, 26, 40, 0, time.UTC),
+				Action:    "!REPORTP",
+				Issuer:    "TAG O'Brien",
+				Target:    " D'Artagnan",
+				Details:   "afk",
+			},
+		},
+		{
+			input: "[2026_01_09_23_26_40] !WARN           performed by 'TAG user1': don't stand on 'x' on 'y'",
+			output: &AdminEntry{
+				Timestamp: time.Date(2026, 1, 9, 23, 26, 40, 0, time.UTC),
+				Action:    "!WARN",
+				Issuer:    "TAG user1",
+				Target:    "",
+				Details:   "don't stand on 'x' on 'y'",
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -51,4 +81,9 @@ func TestParseAdminEntry(t *testing.T) {
 			require.Equal(t, test.output, entry)
 		})
 	}
+}
+
+func TestParseAdminEntryTruncated(t *testing.T) {
+	_, err := ParseAdminEntry("[2026_01_09_23_25_47]", DefaultAdminEntryDateFormat)
+	require.Error(t, err)
 }
